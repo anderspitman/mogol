@@ -1,31 +1,7 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-const names = {};
-export function registerPlugin(name, func) {
-  registerName(name, func); 
-}
-
-export function registerPattern(name, patternText) {
-  const pluginFunc = (golicon) => {
-    const patternFunc = () => {
-      return parsePattern(patternText);
-    };
-    golicon.setPatternFunc(patternFunc);
-  };
-
-  registerPlugin(name, pluginFunc); 
-}
-
-export function start() {
-
-  insertDefaultStyles();
-
-  const golis = document.getElementsByClassName('goli');
-
-  for (const goli of golis) {
-    const gol = new GOL(goli);
-    gol.start();
-  }
+function rgba(c) {
+  return `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
 }
 
 function parsePattern(patternText) {
@@ -60,55 +36,50 @@ function parsePattern(patternText) {
   return rows;
 }
 
-function registerName(name, value) {
-  const fullName = 'goli-' + name;
-  if (names[fullName]) {
-    throw "golicons name '" + name + "' already in use";
-  }
-  names[fullName] = value;
-}
 
-function insertDefaultStyles() {
-  const style = document.createElement('style');
-  style.type = 'text/css';
-  let styles = '';
-  
-  styles += '.goli { width: 32px; height: 32px; }';
-  styles += '.goli-live { fill: #000; }';
-  styles += '.goli-dead { fill: #fff; stroke: #000; }';
+export class GOL {
+  constructor({ domElement, numRows, numCols, lifeColor, seedColor }) {
+    this._el = domElement;
 
-  const node = document.createTextNode(styles);
-  style.appendChild(node);
+    this._lifeColor = lifeColor;
+    this._seedColor = seedColor;
 
-  const head = document.getElementsByTagName('head')[0];
+    this._tickDelayMs = 100;
 
-  head.insertBefore(style, head.firstChild);
-}
+    const patternFunc = () => {
+      const rows = [];
+      for (let i = 0; i < numRows; i++) {
+        rows.push(new Uint32Array(numCols).fill(0));
+      }
+      console.log(rows);
+      return rows;
+    };
 
-class GOL {
-  constructor(el) {
-    this._el = el;
+    this._state = patternFunc(); 
+    this._newState = patternFunc(); 
+    this._prevState = patternFunc();
+    this._seeds = patternFunc();
 
-    this._tickDelayMs = 1000;
+    this._seeds[20][20] = 120;
+    this._seeds[21][20] = 120;
+    this._seeds[22][20] = 120;
+    this._seeds[23][20] = 120;
 
-    this._parseClassOptions();
 
-    this._state = this._patternFunc(); 
-    this._newState = this._patternFunc(); 
-    this._prevState = this._patternFunc();
     this._cells = [];
 
     this._numRows = this._state.length;
     this._numCols = this._state[0].length;
 
-    const dim = el.getBoundingClientRect();
+    const dim = this._el.getBoundingClientRect();
     const cellWidth = dim.width / this._numCols;
     const cellHeight = dim.height / this._numRows;
+    this._dim = dim;
 
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.style.width = '100%';
     svg.style.height = '100%';
-    el.appendChild(svg);
+    this._el.appendChild(svg);
     
     for (let i = 0; i < this._state.length; i++) {
       const row = document.createElementNS(SVG_NS, 'g');
@@ -121,6 +92,8 @@ class GOL {
         cell.setAttribute('width', cellWidth);
         cell.setAttribute('height', cellHeight);
         cell.setAttribute('x', j*cellWidth);
+        cell.style.fill = 'white'; 
+        cell.style.stroke = 'black'; 
         row.appendChild(cell);
         this._cells[i][j] = cell;
       }
@@ -129,30 +102,65 @@ class GOL {
     this.initRender();
   }
 
-  _parseClassOptions() {
-    const classList = this._el.classList;
-
-    for (const klass of classList) {
-      if (klass.startsWith('goli-tick-ms')) {
-        this._tickDelayMs = Number(klass.slice(13));
-      }
-      else if (klass.startsWith('goli-start-delay-ms')) {
-        this._startDelayMs = Number(klass.slice(20));
-      }
-      else {
-        // class not recognized; check if there's a plugin for it
-        if (names[klass]) {
-          names[klass](this);
-        }
-        else if (klass.startsWith('goli-')) {
-          throw "Unrecognized golicons class: " + klass;
-        }
-      }
-    }
+  getGridCoordinates(cursorX, cursorY) {
+    const x = Math.floor((cursorX / this._dim.width) * this._numCols);
+    const y = Math.floor((cursorY / this._dim.height) * this._numRows);
+    return { x, y };
   }
 
   setPatternFunc(func) {
     this._patternFunc = func;
+  }
+
+  placeGlider(x, y, direction) {
+    if (x > 0 && y > 0 && x < this._numCols && y < this._numRows &&
+        this.isSeeded(x, y, 3)) {
+
+
+      switch(direction) {
+        case 'southwest':
+          this._state[y-1][x-1] = 1;
+          this._state[y][x-1] = 1;
+          this._state[y+1][x-1] = 1;
+          this._state[y+1][x] = 1;
+          this._state[y][x+1] = 1;
+          break;
+        case 'southeast':
+          this._state[y+1][x-1] = 1;
+          this._state[y+1][x] = 1;
+          this._state[y+1][x+1] = 1;
+          this._state[y][x+1] = 1;
+          this._state[y-1][x] = 1;
+          break;
+        case 'northeast':
+          this._state[y+1][x+1] = 1;
+          this._state[y][x+1] = 1;
+          this._state[y-1][x+1] = 1;
+          this._state[y-1][x] = 1;
+          this._state[y][x-1] = 1;
+          break;
+        case 'northwest':
+          this._state[y-1][x+1] = 1;
+          this._state[y-1][x] = 1;
+          this._state[y-1][x-1] = 1;
+          this._state[y][x-1] = 1;
+          this._state[y+1][x] = 1;
+          break;
+      }
+    }
+
+    this.render();
+  }
+
+  isSeeded(x, y, distance) {
+    for (let j = y - distance; j < y + distance; j++) {
+      for (let i = x - distance; i < x + distance; i++) {
+        if (this._seeds[j][i] > 0) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
   
   start() {
@@ -188,6 +196,11 @@ class GOL {
 
     for (let i = 0; i < this._state.length; i++) {
       for (let j = 0; j < this._state[0].length; j++) {
+
+        if (this._seeds[i][j] > 0) {
+          this._seeds[i][j] -= 1;
+        }
+
         const neighbors = this.neighbors(i, j);
 
         let liveCount = 0;
@@ -219,6 +232,7 @@ class GOL {
           if (liveCount === 3) {
             // reproduction
             newState = 1;
+            this._seeds[i][j] += 20;
           }
         }
 
@@ -319,9 +333,9 @@ class GOL {
 
     for (let i = 0; i < this._numRows; i++) {
       for (let j = 0; j < this._numCols; j++) {
-        if (this._state[i][j] !== this._prevState[i][j]) {
-          this.renderCell(i, j, this._state[i][j]);
-        }
+        //if (this._state[i][j] !== this._prevState[i][j]) {
+        this.renderCell(i, j, this._state[i][j]);
+        //}
       }
     }
 
@@ -332,11 +346,22 @@ class GOL {
     if (state === 1) {
       this._cells[i][j].classList.remove('goli-dead');
       this._cells[i][j].classList.add('goli-live');
+      this._cells[i][j].style.fill = rgba(this._lifeColor);
+      this._cells[i][j].style.fillOpacity = 1.0;
     }
     else {
       this._cells[i][j].classList.remove('goli-live');
       this._cells[i][j].classList.add('goli-dead');
+
+      if (this._seeds[i][j] > 0) {
+        this._cells[i][j].style.fill = rgba(this._seedColor);
+        this._cells[i][j].style.fillOpacity = this._seeds[i][j] / 100; 
+      }
+      else {
+        this._cells[i][j].style.fill = 'white';
+      }
     }
+    
   }
 }
 
