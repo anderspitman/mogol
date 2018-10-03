@@ -44,7 +44,7 @@ export class GOL {
     this._lifeColor = lifeColor;
     this._seedColor = seedColor;
 
-    this._tickDelayMs = 100;
+    this._tickDelayMs = 32;
 
     const patternFunc = () => {
       const rows = [];
@@ -57,7 +57,7 @@ export class GOL {
 
     this._state = patternFunc(); 
     this._newState = patternFunc(); 
-    this._prevState = patternFunc();
+    //this._prevState = patternFunc();
     this._seeds = patternFunc();
 
     this._seeds[20][20] = 120;
@@ -72,34 +72,41 @@ export class GOL {
     this._numCols = this._state[0].length;
 
     const dim = this._el.getBoundingClientRect();
-    const cellWidth = dim.width / this._numCols;
-    const cellHeight = dim.height / this._numRows;
+    this.cellWidth = dim.width / this._numCols;
+    this.cellHeight = dim.height / this._numRows;
     this._dim = dim;
 
-    const svg = document.createElementNS(SVG_NS, 'svg');
-    svg.style.width = '100%';
-    svg.style.height = '100%';
-    this._el.appendChild(svg);
-    
-    for (let i = 0; i < this._state.length; i++) {
-      const row = document.createElementNS(SVG_NS, 'g');
-      this._cells[i] = [];
-      row.classList.add('goli-row');
-      row.setAttribute('transform', 'translate(0, ' + i*cellHeight + ')');
-      svg.appendChild(row);
-      for (let j = 0; j < this._state[0].length; j++) {
-        const cell = document.createElementNS(SVG_NS, 'rect');
-        cell.setAttribute('width', cellWidth);
-        cell.setAttribute('height', cellHeight);
-        cell.setAttribute('x', j*cellWidth);
-        cell.style.fill = 'white'; 
-        cell.style.stroke = 'black'; 
-        row.appendChild(cell);
-        this._cells[i][j] = cell;
-      }
-    }
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = dim.width;
+    this.canvas.height = dim.height;
+    this._el.appendChild(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
 
-    this.initRender();
+    //const svg = document.createElementNS(SVG_NS, 'svg');
+    //svg.style.width = '100%';
+    //svg.style.height = '100%';
+    //this._el.appendChild(svg);
+    //
+    //for (let i = 0; i < this._state.length; i++) {
+    //  const row = document.createElementNS(SVG_NS, 'g');
+    //  this._cells[i] = [];
+    //  row.classList.add('goli-row');
+    //  row.setAttribute('transform', 'translate(0, ' + i*cellHeight + ')');
+    //  svg.appendChild(row);
+    //  for (let j = 0; j < this._state[0].length; j++) {
+    //    const cell = document.createElementNS(SVG_NS, 'rect');
+    //    cell.setAttribute('width', cellWidth);
+    //    cell.setAttribute('height', cellHeight);
+    //    cell.setAttribute('x', j*cellWidth);
+    //    cell.style.fill = 'white'; 
+    //    cell.style.stroke = 'black'; 
+    //    row.appendChild(cell);
+    //    this._cells[i][j] = cell;
+    //  }
+    //}
+
+    this.placeGlider(20, 20, 'southeast');
+    //this.initRender();
   }
 
   getGridCoordinates(cursorX, cursorY) {
@@ -189,10 +196,10 @@ export class GOL {
   }
 
   tick() {
-    //const startTime = timeNowSeconds();
+    const startTime = timeNowSeconds();
 
     copyState(this._state, this._newState);
-    copyState(this._state, this._prevState);
+    //copyState(this._state, this._prevState);
 
     for (let i = 0; i < this._state.length; i++) {
       for (let j = 0; j < this._state[0].length; j++) {
@@ -201,16 +208,7 @@ export class GOL {
           this._seeds[i][j] -= 1;
         }
 
-        const neighbors = this.neighbors(i, j);
-
-        let liveCount = 0;
-
-        // TODO: this can be generated on the fly in neighbors
-        for (const neighbor of neighbors) {
-          if (neighbor === 1) {
-            liveCount++;
-          }
-        }
+        const liveCount = this.numLiveNeighbors(i, j);
 
         const currentState = this._state[i][j];
         let newState = currentState;
@@ -242,7 +240,20 @@ export class GOL {
 
     copyState(this._newState, this._state);
 
-    //console.log("Tick time: " + (timeNowSeconds() - startTime));
+    console.log("Tick time: " + (timeNowSeconds() - startTime));
+  }
+
+  numLiveNeighbors(i, j) {
+    return (
+      this.topLeft(i, j) +
+      this.top(i, j) +
+      this.topRight(i, j) +
+      this.left(i, j) +
+      this.right(i, j) +
+      this.bottomLeft(i, j) +
+      this.bottom(i, j) +
+      this.bottomRight(i, j)
+    );
   }
 
   neighbors(i, j) {
@@ -320,29 +331,61 @@ export class GOL {
   }
 
   // don't check if value changed on first render
-  initRender() {
-    for (let i = 0; i < this._numRows; i++) {
-      for (let j = 0; j < this._numCols; j++) {
-          this.renderCell(i, j, this._state[i][j]);
-      }
-    }
-  }
+  //initRender() {
+  //  for (let i = 0; i < this._numRows; i++) {
+  //    for (let j = 0; j < this._numCols; j++) {
+  //        this.renderCell(i, j, this._state[i][j]);
+  //    }
+  //  }
+  //}
 
   render() {
-    //const startTime = timeNowSeconds();
+    const startTime = timeNowSeconds();
 
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // live cells
+    this.ctx.fillStyle = rgba(this._lifeColor);
+    this.ctx.beginPath();
     for (let i = 0; i < this._numRows; i++) {
       for (let j = 0; j < this._numCols; j++) {
-        //if (this._state[i][j] !== this._prevState[i][j]) {
-        this.renderCell(i, j, this._state[i][j]);
-        //}
+        if (this._state[i][j] === 1) {
+          this.ctx.rect(j*this.cellWidth, i*this.cellHeight, this.cellWidth,
+            this.cellHeight);
+        }
       }
     }
+    this.ctx.fill();
 
-    //console.log("Render time: " + (timeNowSeconds() - startTime));
+    this.ctx.fillStyle = rgba(this._seedColor);
+    this.ctx.beginPath();
+    for (let i = 0; i < this._numRows; i++) {
+      for (let j = 0; j < this._numCols; j++) {
+        if (this._seeds[i][j] > 1 && !this._state[i][j]) {
+          //this._seedColor.a = this._seeds[i][j] / 100;
+          this.ctx.rect(j*this.cellWidth, i*this.cellHeight, this.cellWidth,
+            this.cellHeight);
+        }
+      }
+    }
+    this.ctx.fill();
+
+    //// dead cells
+    //this.ctx.fillStyle = '#ffffff';
+    //for (let i = 0; i < this._numRows; i++) {
+    //  for (let j = 0; j < this._numCols; j++) {
+    //    if (this._state[i][j] === 0) {
+    //      this.ctx.rect(j*this.cellWidth, i*this.cellHeight, this.cellWidth,
+    //        this.cellHeight);
+    //    }
+    //  }
+    //}
+    //this.ctx.fill();
+
+    console.log("Render time: " + (timeNowSeconds() - startTime));
   }
 
-  renderCell(i, j, state) {
+  renderCellSvg(i, j, state) {
     if (state === 1) {
       this._cells[i][j].classList.remove('goli-dead');
       this._cells[i][j].classList.add('goli-live');
@@ -361,7 +404,6 @@ export class GOL {
         this._cells[i][j].style.fill = 'white';
       }
     }
-    
   }
 }
 
