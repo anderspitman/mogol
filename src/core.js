@@ -1,3 +1,7 @@
+import { Vector2 } from './math';
+import { PannerZoomer } from './panzoom';
+
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function rgba(c) {
@@ -82,6 +86,51 @@ export class GOL {
     this._el.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
 
+    const curPos = new Vector2({ x: 0, y: 0 });
+    this.canvas.addEventListener('mousemove', (e) => {
+      curPos.x = this.getWorldX(e.clientX);
+      curPos.y = this.getWorldY(e.clientY);
+      console.log(curPos);
+    });
+
+    const panzoom = new PannerZoomer({
+      domElementId: 'canvas-container',
+    });
+    this._zoom = 1.0;
+
+
+    panzoom.onZoom((newZoom) => {
+
+      trans(curPos.x, curPos.y);
+      this._zoom = newZoom;
+      trans(-curPos.x, -curPos.y);
+
+      panzoom.setPan(this._trans.x, this._trans.y);
+
+      this.ctx.fillStyle = '#000';
+      this.ctx.fillRect(0, 0,
+        this.canvas.width, this.canvas.height);
+      this.render();
+
+      //panzoom.resetZoom();
+    });
+
+    this._trans = new Vector2({ x: 0, y: 0 });
+
+    panzoom.onPan((panX, panY) => {
+      this._trans.x = panX;
+      this._trans.y = panY;
+      this.ctx.fillStyle = '#000';
+      this.ctx.fillRect(0, 0,
+        this.canvas.width, this.canvas.height);
+      this.render();
+    });
+
+    const trans = (x, y) => {
+      this._trans.x += (x * this._zoom);
+      this._trans.y += (y * this._zoom);
+    };
+
     //const svg = document.createElementNS(SVG_NS, 'svg');
     //svg.style.width = '100%';
     //svg.style.height = '100%';
@@ -109,9 +158,25 @@ export class GOL {
     //this.initRender();
   }
 
+  getWorldX(x) {
+    return (x - this._trans.x) / this._zoom;
+  }
+
+  getWorldY(y) {
+    return (y - this._trans.y) / this._zoom;
+  }
+
+  getWorldPos(x, y) {
+    const worldPos = new Vector2({ x: 0, y: 0 });
+    worldPos.x = (x - this._trans.x) / this._zoom;
+    worldPos.y = (y - this._trans.y) / this._zoom;
+    return worldPos;
+  }
+
   getGridCoordinates(cursorX, cursorY) {
-    const x = Math.floor((cursorX / this._dim.width) * this._numCols);
-    const y = Math.floor((cursorY / this._dim.height) * this._numRows);
+    const worldPos = this.getWorldPos(cursorX, cursorY);
+    const x = Math.floor((worldPos.x / this._dim.width) * this._numCols);
+    const y = Math.floor((worldPos.y / this._dim.height) * this._numRows);
     return { x, y };
   }
 
@@ -240,7 +305,7 @@ export class GOL {
 
     copyState(this._newState, this._state);
 
-    console.log("Tick time: " + (timeNowSeconds() - startTime));
+    //console.log("Tick time: " + (timeNowSeconds() - startTime));
   }
 
   numLiveNeighbors(i, j) {
@@ -342,7 +407,10 @@ export class GOL {
   render() {
     const startTime = timeNowSeconds();
 
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    //this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#333';
+    this.ctx.fillRect(this._trans.x, this._trans.y,
+      this.canvas.width*this._zoom, this.canvas.height*this._zoom);
 
     // live cells
     this.ctx.fillStyle = rgba(this._lifeColor);
@@ -350,8 +418,7 @@ export class GOL {
     for (let i = 0; i < this._numRows; i++) {
       for (let j = 0; j < this._numCols; j++) {
         if (this._state[i][j] === 1) {
-          this.ctx.rect(j*this.cellWidth, i*this.cellHeight, this.cellWidth,
-            this.cellHeight);
+          this.drawCell(i, j);
         }
       }
     }
@@ -363,8 +430,7 @@ export class GOL {
       for (let j = 0; j < this._numCols; j++) {
         if (this._seeds[i][j] > 1 && !this._state[i][j]) {
           //this._seedColor.a = this._seeds[i][j] / 100;
-          this.ctx.rect(j*this.cellWidth, i*this.cellHeight, this.cellWidth,
-            this.cellHeight);
+          this.drawCell(i, j);
         }
       }
     }
@@ -382,7 +448,14 @@ export class GOL {
     //}
     //this.ctx.fill();
 
-    console.log("Render time: " + (timeNowSeconds() - startTime));
+    //console.log("Render time: " + (timeNowSeconds() - startTime));
+  }
+
+  drawCell(i, j) {
+    this.ctx.rect(
+      j*this.cellWidth*this._zoom + this._trans.x,
+      i*this.cellHeight*this._zoom + this._trans.y,
+      this.cellWidth*this._zoom, this.cellHeight*this._zoom);
   }
 
   renderCellSvg(i, j, state) {
