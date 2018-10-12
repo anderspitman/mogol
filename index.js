@@ -11,16 +11,22 @@ x = 36, y = 9, rule = B3/S23
 24bo11b$22bobo11b$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o14b$2o8b
 o3bob2o4bobo11b$10bo5bo7bo11b$11bo3bo20b$12b2o!`;
 
-const patternIter = new rleParser.parse(rle_text);
+function parsePattern(text) {
+  const patternIter = new rleParser.parse(text);
 
-let row = patternIter.next();
+  let row = patternIter.next();
 
-const pattern = [row];
-while (row) {
-  console.log(row);
-  row = patternIter.next();
-  pattern.push(row);
+  const pattern = [];
+  while (row) {
+    console.log(row);
+    pattern.push(row);
+    row = patternIter.next();
+  }
+
+  return pattern;
 }
+
+let pattern = parsePattern(rle_text);
 
 const el = document.getElementById('canvas-container');
 
@@ -60,8 +66,13 @@ el.addEventListener('click', (e) => {
   gol.placePattern(point.x, point.y, pattern);
 });
 
-gol.placeGlider(10, 20, 'southwest');
-gol.placeGlider(40, 20, 'southeast');
-gol.placeGlider(30, 20, 'northeast');
-gol.placeGlider(40, 45, 'northwest');
+const patternLoadBtn = document.getElementById('load-pattern-btn');
+const urlTextInput = document.getElementById('pattern-url-text');
+
+patternLoadBtn.addEventListener('click', (e) => {
+  const rleText = urlTextInput.value;
+  pattern = parsePattern(rleText);
+  console.log(pattern);
+});
+
 gol.start();
