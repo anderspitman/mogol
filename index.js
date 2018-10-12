@@ -1,6 +1,26 @@
 import { GOL } from './src';
+import * as rleParser from "o-rle";
 
-console.log(GOL);
+const rle_text = `\
+#N Gosper glider gun
+#O Bill Gosper
+#C A true period 30 glider gun.
+#C The first known gun and the first known finite pattern with unbounded growth.
+#C www.conwaylife.com/wiki/index.php?title=Gosper_glider_gun
+x = 36, y = 9, rule = B3/S23
+24bo11b$22bobo11b$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o14b$2o8b
+o3bob2o4bobo11b$10bo5bo7bo11b$11bo3bo20b$12b2o!`;
+
+const patternIter = new rleParser.parse(rle_text);
+
+let row = patternIter.next();
+
+const pattern = [row];
+while (row) {
+  console.log(row);
+  row = patternIter.next();
+  pattern.push(row);
+}
 
 const el = document.getElementById('canvas-container');
 
@@ -36,7 +56,8 @@ el.addEventListener('click', (e) => {
 
   console.log(point);
 
-  gol.placeGlider(point.x, point.y, direction);
+  //gol.placeGlider(point.x, point.y, direction);
+  gol.placePattern(point.x, point.y, pattern);
 });
 
 gol.placeGlider(10, 20, 'southwest');

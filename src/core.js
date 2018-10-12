@@ -224,6 +224,22 @@ export class GOL {
     this.render();
   }
 
+  placePattern(x, y, pattern) {
+    if (x > 0 && y > 0 && x < this._numCols && y < this._numRows &&
+        this.isSeeded(x, y, 3)) {
+
+      console.log(pattern);
+
+      for (let j = 0; j < pattern.length; j++) {
+        const row = pattern[j];
+        for (let i = 0; i < row.length; i++) {
+          const cell = row[i];
+          this._state[j+y][i+x] = cell;
+        }
+      }
+    }
+  }
+
   isSeeded(x, y, distance) {
     for (let j = y - distance; j < y + distance; j++) {
       for (let i = x - distance; i < x + distance; i++) {
