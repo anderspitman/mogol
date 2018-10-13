@@ -76,6 +76,7 @@ export class GOL {
     this._numCols = this._state[0].length;
 
     const dim = this._el.getBoundingClientRect();
+    console.log(dim);
     this.cellWidth = dim.width / this._numCols;
     this.cellHeight = dim.height / this._numRows;
     this._dim = dim;
@@ -88,9 +89,9 @@ export class GOL {
 
     const curPos = new Vector2({ x: 0, y: 0 });
     this.canvas.addEventListener('mousemove', (e) => {
+      console.log(e.clientX, e.clientY);
       curPos.x = this.getWorldX(e.clientX);
       curPos.y = this.getWorldY(e.clientY);
-      console.log(curPos);
     });
 
     const panzoom = new PannerZoomer({
@@ -159,10 +160,12 @@ export class GOL {
   }
 
   getWorldX(x) {
+    x -= this._dim.left;
     return (x - this._trans.x) / this._zoom;
   }
 
   getWorldY(y) {
+    y -= this._dim.top;
     return (y - this._trans.y) / this._zoom;
   }
 
@@ -174,9 +177,10 @@ export class GOL {
   }
 
   getGridCoordinates(cursorX, cursorY) {
-    const worldPos = this.getWorldPos(cursorX, cursorY);
-    const x = Math.floor((worldPos.x / this._dim.width) * this._numCols);
-    const y = Math.floor((worldPos.y / this._dim.height) * this._numRows);
+    const worldX = this.getWorldX(cursorX);
+    const worldY = this.getWorldY(cursorY);
+    const x = Math.floor((worldX / this._dim.width) * this._numCols);
+    const y = Math.floor((worldY/ this._dim.height) * this._numRows);
     return { x, y };
   }
 

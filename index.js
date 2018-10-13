@@ -32,8 +32,8 @@ const el = document.getElementById('canvas-container');
 
 const gol = new GOL({
   domElement: el,
-  numRows: 200,
-  numCols: 400,
+  numRows: 300,
+  numCols: 600,
   lifeColor: { r: 0, g: 128, b: 255, a: 1 },
   seedColor: { r: 255, g: 0, b: 255, a: .5 },
 });
