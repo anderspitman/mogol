@@ -191,6 +191,47 @@ export class GOL {
     const y = Math.floor((worldY/ this._dim.height) * this._numRows);
     return y;
   }
+
+  getOrientedCol(rowIndex, colIndex) {
+    let gridColIndex;
+    switch (this._orientation) {
+      case 'up':
+        gridColIndex = this._curGridPos.x + colIndex - this._patternHalfWidth;
+        break;
+      case 'left':
+        gridColIndex = this._curGridPos.x + rowIndex - this._patternHalfHeight;
+        break;
+      case 'down':
+        gridColIndex = this._curGridPos.x - colIndex + this._patternHalfWidth;
+        break;
+      case 'right':
+        gridColIndex = this._curGridPos.x - rowIndex + this._patternHalfHeight;
+        break;
+    }
+
+    return gridColIndex;
+  }
+
+  getOrientedRow(rowIndex, colIndex) {
+    let gridRowIndex;
+    switch (this._orientation) {
+      case 'up':
+        gridRowIndex = this._curGridPos.y + rowIndex - this._patternHalfHeight;
+        break;
+      case 'left':
+        gridRowIndex = this._curGridPos.y - colIndex + this._patternHalfWidth;
+        break;
+      case 'down':
+        gridRowIndex = this._curGridPos.y - rowIndex + this._patternHalfHeight;
+        break;
+      case 'right':
+        gridRowIndex = this._curGridPos.y + colIndex - this._patternHalfWidth;
+        break;
+    }
+
+    return gridRowIndex;
+  }
+
   setPatternFunc(func) {
     this._patternFunc = func;
   }
@@ -241,20 +282,25 @@ export class GOL {
     this._patternHalfHeight = Math.floor(this._pattern.length / 2);
   }
 
-  placePattern(x, y) {
-    if (x > 0 && y > 0 && x < this._numCols && y < this._numRows &&
-        this.isSeeded(x, y, this._patternHalfWidth, this._patternHalfHeight)) {
+  setOrientation(orientation) {
+    console.log(orientation);
+    this._orientation = orientation;
+  }
+
+  placePattern() {
+    //if (x > 0 && y > 0 && x < this._numCols && y < this._numRows &&
+    //    this.isSeeded(x, y, this._patternHalfWidth, this._patternHalfHeight)) {
 
       for (let j = 0; j < this._pattern.length; j++) {
         const row = this._pattern[j];
         for (let i = 0; i < row.length; i++) {
           const cell = row[i];
-          const rowIndex = (j+y) - this._patternHalfHeight;
-          const colIndex = (i+x) - this._patternHalfWidth;
+          const rowIndex = this.getOrientedRow(j, i);
+          const colIndex = this.getOrientedCol(j, i);
           this._state[rowIndex][colIndex] = cell;
         }
       }
-    }
+    //}
   }
 
   isSeeded(x, y, xDist, yDist) {
@@ -476,8 +522,8 @@ export class GOL {
     for (let rowIndex = 0; rowIndex < this._pattern.length; rowIndex++) {
       for (let colIndex = 0; colIndex < this._pattern[0].length; colIndex++) {
         if (this._pattern[rowIndex][colIndex] === 1) {
-          const gridColIndex = colIndex + this._curGridPos.x - this._patternHalfWidth;
-          const gridRowIndex = rowIndex + this._curGridPos.y - this._patternHalfHeight;
+          const gridColIndex = this.getOrientedCol(rowIndex, colIndex);
+          const gridRowIndex = this.getOrientedRow(rowIndex, colIndex);
           this.drawCell(gridRowIndex, gridColIndex);
         }
       }

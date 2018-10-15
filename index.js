@@ -39,30 +39,31 @@ const gol = new GOL({
 let pattern = parsePattern(rle_text);
 gol.setPattern(pattern);
 
-let direction = 'southwest';
+let direction = 'up';
+gol.setOrientation(direction);
+
 window.addEventListener('keypress', (e) => {
 
   switch (e.key) {
     case 'w':
-      direction = 'northwest';
+      direction = 'up';
       break;
     case 'a':
-      direction = 'southwest';
+      direction = 'left';
       break;
     case 's':
-      direction = 'southeast';
+      direction = 'down';
       break;
     case 'd':
-      direction = 'northeast';
+      direction = 'right';
       break;
   }
+
+  gol.setOrientation(direction);
 });
 
 el.addEventListener('click', (e) => {
-  const point = gol.getGridCoordinates(e.clientX, e.clientY);
-
-  //gol.placeGlider(point.x, point.y, direction);
-  gol.placePattern(point.x, point.y);
+  gol.placePattern();
 });
 
 const patternLoadBtn = document.getElementById('load-pattern-btn');
