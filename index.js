@@ -26,8 +26,6 @@ function parsePattern(text) {
   return pattern;
 }
 
-let pattern = parsePattern(rle_text);
-
 const el = document.getElementById('canvas-container');
 
 const gol = new GOL({
@@ -37,6 +35,9 @@ const gol = new GOL({
   lifeColor: { r: 0, g: 128, b: 255, a: 1 },
   seedColor: { r: 255, g: 0, b: 255, a: .5 },
 });
+
+let pattern = parsePattern(rle_text);
+gol.setPattern(pattern);
 
 let direction = 'southwest';
 window.addEventListener('keypress', (e) => {
@@ -60,10 +61,8 @@ window.addEventListener('keypress', (e) => {
 el.addEventListener('click', (e) => {
   const point = gol.getGridCoordinates(e.clientX, e.clientY);
 
-  console.log(point);
-
   //gol.placeGlider(point.x, point.y, direction);
-  gol.placePattern(point.x, point.y, pattern);
+  gol.placePattern(point.x, point.y);
 });
 
 const patternLoadBtn = document.getElementById('load-pattern-btn');
@@ -72,7 +71,7 @@ const urlTextInput = document.getElementById('pattern-url-text');
 patternLoadBtn.addEventListener('click', (e) => {
   const rleText = urlTextInput.value;
   pattern = parsePattern(rleText);
-  console.log(pattern);
+  gol.setPattern(pattern);
 });
 
 gol.start();

@@ -64,10 +64,7 @@ export class GOL {
     //this._prevState = patternFunc();
     this._seeds = patternFunc();
 
-    this._seeds[20][20] = 120;
-    this._seeds[21][20] = 120;
-    this._seeds[22][20] = 120;
-    this._seeds[23][20] = 120;
+    this._seeds[numRows/2][numCols/2] = 1024;
 
 
     this._cells = [];
@@ -88,10 +85,12 @@ export class GOL {
     this.ctx = this.canvas.getContext('2d');
 
     const curPos = new Vector2({ x: 0, y: 0 });
+    this._curGridPos = new Vector2({ x: 0, y: 0 });
     this.canvas.addEventListener('mousemove', (e) => {
-      console.log(e.clientX, e.clientY);
       curPos.x = this.getWorldX(e.clientX);
       curPos.y = this.getWorldY(e.clientY);
+      this._curGridPos.x = this.getGridCoordinatesX(e.clientX);
+      this._curGridPos.y = this.getGridCoordinatesY(e.clientY);
     });
 
     const panzoom = new PannerZoomer({
@@ -154,9 +153,6 @@ export class GOL {
     //    this._cells[i][j] = cell;
     //  }
     //}
-
-    this.placeGlider(20, 20, 'southeast');
-    //this.initRender();
   }
 
   getWorldX(x) {
@@ -184,13 +180,24 @@ export class GOL {
     return { x, y };
   }
 
+  getGridCoordinatesX(cursorX) {
+    const worldX = this.getWorldX(cursorX);
+    const x = Math.floor((worldX / this._dim.width) * this._numCols);
+    return x;
+  }
+
+  getGridCoordinatesY(cursorY) {
+    const worldY = this.getWorldY(cursorY);
+    const y = Math.floor((worldY/ this._dim.height) * this._numRows);
+    return y;
+  }
   setPatternFunc(func) {
     this._patternFunc = func;
   }
 
   placeGlider(x, y, direction) {
     if (x > 0 && y > 0 && x < this._numCols && y < this._numRows &&
-        this.isSeeded(x, y, 3)) {
+        this.isSeeded(x, y, 3, 3)) {
 
 
       switch(direction) {
@@ -228,25 +235,31 @@ export class GOL {
     this.render();
   }
 
-  placePattern(x, y, pattern) {
+  setPattern(pattern) {
+    this._pattern = pattern;
+    this._patternHalfWidth = Math.floor(this._pattern[0].length / 2);
+    this._patternHalfHeight = Math.floor(this._pattern.length / 2);
+  }
+
+  placePattern(x, y) {
     if (x > 0 && y > 0 && x < this._numCols && y < this._numRows &&
-        this.isSeeded(x, y, 3)) {
+        this.isSeeded(x, y, this._patternHalfWidth, this._patternHalfHeight)) {
 
-      console.log(pattern);
-
-      for (let j = 0; j < pattern.length; j++) {
-        const row = pattern[j];
+      for (let j = 0; j < this._pattern.length; j++) {
+        const row = this._pattern[j];
         for (let i = 0; i < row.length; i++) {
           const cell = row[i];
-          this._state[j+y][i+x] = cell;
+          const rowIndex = (j+y) - this._patternHalfHeight;
+          const colIndex = (i+x) - this._patternHalfWidth;
+          this._state[rowIndex][colIndex] = cell;
         }
       }
     }
   }
 
-  isSeeded(x, y, distance) {
-    for (let j = y - distance; j < y + distance; j++) {
-      for (let i = x - distance; i < x + distance; i++) {
+  isSeeded(x, y, xDist, yDist) {
+    for (let j = y - yDist; j < y + yDist; j++) {
+      for (let i = x - xDist; i < x + xDist; i++) {
         if (this._seeds[j][i] > 0) {
           return true;
         }
@@ -444,6 +457,7 @@ export class GOL {
     }
     this.ctx.fill();
 
+    // seed cells
     this.ctx.fillStyle = rgba(this._seedColor);
     this.ctx.beginPath();
     for (let i = 0; i < this._numRows; i++) {
@@ -456,6 +470,19 @@ export class GOL {
     }
     this.ctx.fill();
 
+    // cursor cells
+    this.ctx.fillStyle = '#ff0000';
+    this.ctx.beginPath();
+    for (let rowIndex = 0; rowIndex < this._pattern.length; rowIndex++) {
+      for (let colIndex = 0; colIndex < this._pattern[0].length; colIndex++) {
+        if (this._pattern[rowIndex][colIndex] === 1) {
+          const gridColIndex = colIndex + this._curGridPos.x - this._patternHalfWidth;
+          const gridRowIndex = rowIndex + this._curGridPos.y - this._patternHalfHeight;
+          this.drawCell(gridRowIndex, gridColIndex);
+        }
+      }
+    }
+    this.ctx.fill();
     //// dead cells
     //this.ctx.fillStyle = '#ffffff';
     //for (let i = 0; i < this._numRows; i++) {
