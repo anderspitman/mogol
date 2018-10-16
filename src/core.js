@@ -131,28 +131,6 @@ export class GOL {
       this._trans.y += (y * this._zoom);
     };
 
-    //const svg = document.createElementNS(SVG_NS, 'svg');
-    //svg.style.width = '100%';
-    //svg.style.height = '100%';
-    //this._el.appendChild(svg);
-    //
-    //for (let i = 0; i < this._state.length; i++) {
-    //  const row = document.createElementNS(SVG_NS, 'g');
-    //  this._cells[i] = [];
-    //  row.classList.add('goli-row');
-    //  row.setAttribute('transform', 'translate(0, ' + i*cellHeight + ')');
-    //  svg.appendChild(row);
-    //  for (let j = 0; j < this._state[0].length; j++) {
-    //    const cell = document.createElementNS(SVG_NS, 'rect');
-    //    cell.setAttribute('width', cellWidth);
-    //    cell.setAttribute('height', cellHeight);
-    //    cell.setAttribute('x', j*cellWidth);
-    //    cell.style.fill = 'white'; 
-    //    cell.style.stroke = 'black'; 
-    //    row.appendChild(cell);
-    //    this._cells[i][j] = cell;
-    //  }
-    //}
   }
 
   getWorldX(x) {
@@ -163,21 +141,6 @@ export class GOL {
   getWorldY(y) {
     y -= this._dim.top;
     return (y - this._trans.y) / this._zoom;
-  }
-
-  getWorldPos(x, y) {
-    const worldPos = new Vector2({ x: 0, y: 0 });
-    worldPos.x = (x - this._trans.x) / this._zoom;
-    worldPos.y = (y - this._trans.y) / this._zoom;
-    return worldPos;
-  }
-
-  getGridCoordinates(cursorX, cursorY) {
-    const worldX = this.getWorldX(cursorX);
-    const worldY = this.getWorldY(cursorY);
-    const x = Math.floor((worldX / this._dim.width) * this._numCols);
-    const y = Math.floor((worldY/ this._dim.height) * this._numRows);
-    return { x, y };
   }
 
   getGridCoordinatesX(cursorX) {
@@ -230,50 +193,6 @@ export class GOL {
     }
 
     return gridRowIndex;
-  }
-
-  setPatternFunc(func) {
-    this._patternFunc = func;
-  }
-
-  placeGlider(x, y, direction) {
-    if (x > 0 && y > 0 && x < this._numCols && y < this._numRows &&
-        this.isSeeded(x, y, 3, 3)) {
-
-
-      switch(direction) {
-        case 'southwest':
-          this._state[y-1][x-1] = 1;
-          this._state[y][x-1] = 1;
-          this._state[y+1][x-1] = 1;
-          this._state[y+1][x] = 1;
-          this._state[y][x+1] = 1;
-          break;
-        case 'southeast':
-          this._state[y+1][x-1] = 1;
-          this._state[y+1][x] = 1;
-          this._state[y+1][x+1] = 1;
-          this._state[y][x+1] = 1;
-          this._state[y-1][x] = 1;
-          break;
-        case 'northeast':
-          this._state[y+1][x+1] = 1;
-          this._state[y][x+1] = 1;
-          this._state[y-1][x+1] = 1;
-          this._state[y-1][x] = 1;
-          this._state[y][x-1] = 1;
-          break;
-        case 'northwest':
-          this._state[y-1][x+1] = 1;
-          this._state[y-1][x] = 1;
-          this._state[y-1][x-1] = 1;
-          this._state[y][x-1] = 1;
-          this._state[y+1][x] = 1;
-          break;
-      }
-    }
-
-    this.render();
   }
 
   setPattern(pattern) {
@@ -474,15 +393,6 @@ export class GOL {
     return this._state[this.wrapBottom(i)][this.wrapRight(j)];
   }
 
-  // don't check if value changed on first render
-  //initRender() {
-  //  for (let i = 0; i < this._numRows; i++) {
-  //    for (let j = 0; j < this._numCols; j++) {
-  //        this.renderCell(i, j, this._state[i][j]);
-  //    }
-  //  }
-  //}
-
   render() {
     const startTime = timeNowSeconds();
 
@@ -529,19 +439,6 @@ export class GOL {
       }
     }
     this.ctx.fill();
-    //// dead cells
-    //this.ctx.fillStyle = '#ffffff';
-    //for (let i = 0; i < this._numRows; i++) {
-    //  for (let j = 0; j < this._numCols; j++) {
-    //    if (this._state[i][j] === 0) {
-    //      this.ctx.rect(j*this.cellWidth, i*this.cellHeight, this.cellWidth,
-    //        this.cellHeight);
-    //    }
-    //  }
-    //}
-    //this.ctx.fill();
-
-    //console.log("Render time: " + (timeNowSeconds() - startTime));
   }
 
   drawCell(i, j) {
