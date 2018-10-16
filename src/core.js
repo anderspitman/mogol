@@ -9,6 +9,9 @@ function rgba(c) {
 
 export class GOL {
   constructor({ domElement, numRows, numCols, lifeColor, seedColor }) {
+    this._numRows = numRows;
+    this._numCols = numCols;
+
     this._el = domElement;
 
     this._lifeColor = lifeColor;
@@ -16,24 +19,15 @@ export class GOL {
 
     this._tickDelayMs = 32;
 
-    const patternFunc = () => {
-      const rows = [];
-      for (let i = 0; i < numRows; i++) {
-        rows.push(new Uint32Array(numCols).fill(0));
-      }
-      console.log(rows);
-      return rows;
+    const genUniverse = () => {
+      return new Uint32Array(numRows*numCols).fill(0);
     };
 
-    this._state = patternFunc(); 
-    this._newState = patternFunc(); 
-    //this._prevState = patternFunc();
-    this._seeds = patternFunc();
+    this._state = genUniverse(); 
+    this._newState = genUniverse(); 
+    this._seeds = genUniverse();
 
-    this._seeds[numRows/2][numCols/2] = 1024;
-
-    this._numRows = numRows;
-    this._numCols = numCols;
+    this.setCell(this._seeds, numRows/2, numCols/2, 1024);
 
     const dim = this._el.getBoundingClientRect();
     console.log(dim);
@@ -96,12 +90,13 @@ export class GOL {
 
   }
 
-  getCell(rowIndex, colIndex) {
-    return this._state[rowIndex][colIndex];
+  getCell(obj, rowIndex, colIndex) {
+    //return obj[rowIndex][colIndex];
+    return obj[(rowIndex*this._numCols) + colIndex];
   }
 
-  setCell(rowIndex, colIndex, value) {
-    this._state[rowIndex][colIndex] = value;
+  setCell(obj, rowIndex, colIndex, value) {
+    obj[(rowIndex*this._numCols) + colIndex] = value;
   }
 
   getWorldX(x) {
@@ -187,7 +182,7 @@ export class GOL {
           const cell = row[i];
           const rowIndex = this.getOrientedRow(j, i);
           const colIndex = this.getOrientedCol(j, i);
-          this.setCell(rowIndex, colIndex, cell);
+          this.setCell(this._state, rowIndex, colIndex, cell);
         }
       }
     //}
@@ -196,7 +191,7 @@ export class GOL {
   isSeeded(x, y, xDist, yDist) {
     for (let j = y - yDist; j < y + yDist; j++) {
       for (let i = x - xDist; i < x + xDist; i++) {
-        if (this._seeds[j][i] > 0) {
+        if (this.getCell(this._seeds, j, i) > 0) {
           return true;
         }
       }
@@ -221,14 +216,6 @@ export class GOL {
     }
   }
 
-  printState() {
-    for (let i = 0; i < this._numRows; i++) {
-      const row = this._state[i];
-      console.log(JSON.stringify(row), i);
-    }
-    console.log();
-  }
-
   tick() {
     const startTime = timeNowSeconds();
 
@@ -238,13 +225,14 @@ export class GOL {
     for (let i = 0; i < this._numRows; i++) {
       for (let j = 0; j < this._numCols; j++) {
 
-        if (this._seeds[i][j] > 0) {
-          this._seeds[i][j] -= 1;
+        const seed = this.getCell(this._seeds, i, j);
+        if (seed > 0) {
+          this.setCell(this._seeds, i, j, seed-1);
         }
 
         const liveCount = this.numLiveNeighbors(i, j);
 
-        const currentState = this.getCell(i, j);
+        const currentState = this.getCell(this._state, i, j);
         let newState = currentState;
         if (currentState === 1) {
           if (liveCount < 2) {
@@ -264,11 +252,11 @@ export class GOL {
           if (liveCount === 3) {
             // reproduction
             newState = 1;
-            this._seeds[i][j] += 20;
+            this.setCell(this._seeds, i, j, seed+20);
           }
         }
 
-        this._newState[i][j] = newState;
+        this.setCell(this._newState, i, j, newState);
       }
     }
 
@@ -319,35 +307,35 @@ export class GOL {
   }
 
   topLeft(i, j) {
-    return this.getCell(this.wrapTop(i), this.wrapLeft(j));
+    return this.getCell(this._state, this.wrapTop(i), this.wrapLeft(j));
   }
 
   top(i, j) {
-    return this.getCell(this.wrapTop(i), j);
+    return this.getCell(this._state, this.wrapTop(i), j);
   }
 
   topRight(i, j) {
-    return this.getCell(this.wrapTop(i), this.wrapRight(j));
+    return this.getCell(this._state, this.wrapTop(i), this.wrapRight(j));
   }
 
   left(i, j) {
-    return this.getCell(i, this.wrapLeft(j));
+    return this.getCell(this._state, i, this.wrapLeft(j));
   }
 
   right(i, j) {
-    return this.getCell(i, this.wrapRight(j));
+    return this.getCell(this._state, i, this.wrapRight(j));
   }
 
   bottomLeft(i, j) {
-    return this.getCell(this.wrapBottom(i), this.wrapLeft(j));
+    return this.getCell(this._state, this.wrapBottom(i), this.wrapLeft(j));
   }
 
   bottom(i, j) {
-    return this.getCell(this.wrapBottom(i), j);
+    return this.getCell(this._state, this.wrapBottom(i), j);
   }
 
   bottomRight(i, j) {
-    return this.getCell(this.wrapBottom(i), this.wrapRight(j));
+    return this.getCell(this._state, this.wrapBottom(i), this.wrapRight(j));
   }
 
   render() {
@@ -363,7 +351,7 @@ export class GOL {
     this.ctx.beginPath();
     for (let i = 0; i < this._numRows; i++) {
       for (let j = 0; j < this._numCols; j++) {
-        if (this.getCell(i, j) === 1) {
+        if (this.getCell(this._state, i, j) === 1) {
           this.drawCell(i, j);
         }
       }
@@ -375,7 +363,7 @@ export class GOL {
     this.ctx.beginPath();
     for (let i = 0; i < this._numRows; i++) {
       for (let j = 0; j < this._numCols; j++) {
-        if (this._seeds[i][j] > 1 && !this.getCell(i, j)) {
+        if (this.getCell(this._seeds, i, j) > 1 && !this.getCell(this._state, i, j)) {
           //this._seedColor.a = this._seeds[i][j] / 100;
           this.drawCell(i, j);
         }
@@ -411,9 +399,7 @@ export class GOL {
 
 function copyState(a, b) {
   for (let i = 0; i < a.length; i++) {
-    for (let j = 0; j < a[0].length; j++) {
-      b[i][j] = a[i][j];
-    }
+     b[i] = a[i];
   }
 }
 
