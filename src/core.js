@@ -2,42 +2,8 @@ import { Vector2 } from './math';
 import { PannerZoomer } from './panzoom';
 
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
 function rgba(c) {
   return `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
-}
-
-function parsePattern(patternText) {
-  const rows = [];
-  for (let line of patternText.split('\n')) {
-
-    line = line.trim();
-
-    if (line === '') {
-      continue;
-    }
-
-    const row = [];
-    rows.push(row);
-    
-    for (const char of line) {
-      let cell;
-      if (char === '.') {
-        cell = 0;
-      }
-      else if (char === 'O') {
-        cell = 1;
-      }
-      else {
-        throw "Error parsing pattern char: " + char;
-      }
-
-      row.push(cell);
-    }
-  }
-
-  return rows;
 }
 
 
@@ -319,20 +285,6 @@ export class GOL {
     );
   }
 
-  neighbors(i, j) {
-    // TODO: get rid of this allocation
-    const n = [];
-    n.push(this.topLeft(i, j));
-    n.push(this.top(i, j));
-    n.push(this.topRight(i, j));
-    n.push(this.left(i, j));
-    n.push(this.right(i, j));
-    n.push(this.bottomLeft(i, j));
-    n.push(this.bottom(i, j));
-    n.push(this.bottomRight(i, j));
-    return n;
-  }
-
   wrapTop(i) {
     if (i === 0) {
       return this._state.length - 1;
@@ -448,26 +400,6 @@ export class GOL {
       this.cellWidth*this._zoom, this.cellHeight*this._zoom);
   }
 
-  renderCellSvg(i, j, state) {
-    if (state === 1) {
-      this._cells[i][j].classList.remove('goli-dead');
-      this._cells[i][j].classList.add('goli-live');
-      this._cells[i][j].style.fill = rgba(this._lifeColor);
-      this._cells[i][j].style.fillOpacity = 1.0;
-    }
-    else {
-      this._cells[i][j].classList.remove('goli-live');
-      this._cells[i][j].classList.add('goli-dead');
-
-      if (this._seeds[i][j] > 0) {
-        this._cells[i][j].style.fill = rgba(this._seedColor);
-        this._cells[i][j].style.fillOpacity = this._seeds[i][j] / 100; 
-      }
-      else {
-        this._cells[i][j].style.fill = 'white';
-      }
-    }
-  }
 }
 
 function copyState(a, b) {
