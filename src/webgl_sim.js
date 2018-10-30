@@ -9,8 +9,13 @@ const vsSource = `
 `;
 
 const fsSource = `
+
+  precision mediump float;
+
+  uniform float uVal;
+
   void main() {
-    if (gl_FragCoord.x > 100.0) {
+    if (gl_FragCoord.x > uVal) {
       gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
     }
     else {
@@ -43,10 +48,11 @@ export class WebGLSim {
       attribLocations: {
         vertexPosition: this.gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
       },
-      //uniformLocations: {
-      //  uResolution: this.gl.getUniformLocation(shaderProgram, 'uResolution'),
-      //  uModelViewMatrix: this.gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
-      //},
+      uniformLocations: {
+        uResolution: this.gl.getUniformLocation(shaderProgram, 'uResolution'),
+        uModelViewMatrix: this.gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+        uVal: this.gl.getUniformLocation(shaderProgram, 'uVal'),
+      },
     };
 
     this.initBuffers(this.gl);
@@ -82,6 +88,7 @@ export class WebGLSim {
 
     gl.drawArrays(gl.TRIANGLE_STRIP, offset, 4);
 
+    this._val = 0;
   }
 
   initBuffers(gl) {
@@ -92,17 +99,26 @@ export class WebGLSim {
     this.positionBuffer = positionBuffer;
   }
 
-  render(grid, numRows, numCols) {
+  step(grid, numRows, numCols) {
 
 
-    //const startTime = timeNowSeconds();
+    const startTime = timeNowSeconds();
 
-    //const gl = this.gl;
-    //const defaultShaderInfo = this.defaultShaderInfo;
+    //this.gl.uniform
+
+    const gl = this.gl;
+    const defaultShaderInfo = this.defaultShaderInfo;
     ////const lineData = this._lines;
     ////const numLines = this._lines.length / 4;
 
-    //gl.useProgram(defaultShaderInfo.program);
+    gl.useProgram(defaultShaderInfo.program);
+
+    gl.uniform1f(this.defaultShaderInfo.uniformLocations.uVal, this._val);
+
+    const offset = 0;
+    const numElements = 4;
+    gl.drawArrays(gl.TRIANGLE_STRIP, offset, numElements);
+    this._val += 1;
 
     ////gl.uniformMatrix3fv(
     ////    this.defaultShaderInfo.uniformLocations.uModelViewMatrix,
@@ -132,7 +148,7 @@ export class WebGLSim {
     //  //gl.drawArrays(gl.LINES, offset, grid.length / numComponents);
     //}
 
-    //console.log("WebGL Render time: " + (timeNowSeconds() - startTime));
+    console.log("WebGL time: " + (timeNowSeconds() - startTime));
   }
 }
 

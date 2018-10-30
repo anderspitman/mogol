@@ -210,6 +210,7 @@ export class GOL {
         //this.tick();
         //requestAnimationFrame(this.render.bind(this));
         this.render();
+        this._sim.step();
       }, this._tickDelayMs);
     };
 
@@ -344,8 +345,6 @@ export class GOL {
   }
 
   render() {
-
-    this._sim.render(this._state);
 
     const startTime = timeNowSeconds();
 
