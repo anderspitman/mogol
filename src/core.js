@@ -1,5 +1,7 @@
+const { timeNowSeconds } = require('./utils');
 import { Vector2 } from './math';
 import { PannerZoomer } from './panzoom';
+import { WebGLSim } from './webgl_sim';
 
 
 function rgba(c) {
@@ -18,6 +20,10 @@ export class GOL {
     this._seedColor = seedColor;
 
     this._tickDelayMs = 32;
+
+    this._sim = new WebGLSim({
+      domElementId: 'webgl-container',
+    });
 
     const genUniverse = () => {
       return new Uint32Array(numRows*numCols).fill(0);
@@ -168,7 +174,6 @@ export class GOL {
   }
 
   setOrientation(orientation) {
-    console.log(orientation);
     this._orientation = orientation;
   }
 
@@ -202,7 +207,7 @@ export class GOL {
   start() {
     const go = () => {
       setInterval(() => {
-        this.tick();
+        //this.tick();
         //requestAnimationFrame(this.render.bind(this));
         this.render();
       }, this._tickDelayMs);
@@ -262,7 +267,7 @@ export class GOL {
 
     copyState(this._newState, this._state);
 
-    console.log("Tick time: " + (timeNowSeconds() - startTime));
+    //console.log("Tick time: " + (timeNowSeconds() - startTime));
   }
 
   numLiveNeighbors(i, j) {
@@ -339,6 +344,9 @@ export class GOL {
   }
 
   render() {
+
+    this._sim.render(this._state);
+
     const startTime = timeNowSeconds();
 
     //this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -385,7 +393,7 @@ export class GOL {
     }
     this.ctx.fill();
 
-    console.log("Render time: " + (timeNowSeconds() - startTime));
+    //console.log("Render time: " + (timeNowSeconds() - startTime));
   }
 
   drawCell(i, j) {
@@ -401,8 +409,4 @@ function copyState(a, b) {
   for (let i = 0; i < a.length; i++) {
      b[i] = a[i];
   }
-}
-
-function timeNowSeconds() {
-  return performance.now() / 1000;
 }

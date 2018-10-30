@@ -11,9 +11,17 @@
     }
 
     #canvas-container {
-      width: 1200px;
-      height: 600px;
+      width: 400px;
+      height: 400px;
       margin: 0 auto;
+      display: inline-block;
+    }
+
+    #webgl-container {
+      width: 400px;
+      height: 400px;
+      margin: 0 auto;
+      display: inline-block;
     }
 
   </style>
@@ -21,6 +29,7 @@
     
   <body>
     <div id='canvas-container'></div>
+    <div id='webgl-container'></div>
     <div id='pattern-loader'>
       <textarea id='pattern-url-text'></textarea>
       <button id='load-pattern-btn'>Load</button>
