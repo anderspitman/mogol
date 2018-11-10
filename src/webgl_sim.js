@@ -111,14 +111,40 @@ export class WebGLSim {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
-    const texData = new Uint8Array([
-      255, 0, 0, 255,
-      0, 255, 0, 255,
-      0, 0, 255, 255,
-      255, 0, 255, 255,
-    ]);
+    const texWidth = 8; 
+    const texHeight = 8;
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA,
+    //const texData = new Uint8Array([
+    //  255, 0, 0, 255,
+    //  0, 255, 0, 255,
+    //  0, 0, 255, 255,
+    //  255, 0, 255, 255,
+    //]);
+
+    const texData = new Uint8Array(texWidth * texHeight * 4);
+
+    let texIndex = 0;
+
+    for (let i = 0; i < texHeight; i++) {
+      for (let j = 0; j < texWidth; j++) {
+        if ((j % 2 === 0 && i % 2 !== 0) || (j % 2 !== 0 && i % 2 === 0)) {
+          texData[texIndex + 0] = 64;
+          texData[texIndex + 1] = 64;
+          texData[texIndex + 2] = 64;
+          texData[texIndex + 3] = 255;
+        }
+        else {
+          texData[texIndex + 0] = 200;
+          texData[texIndex + 1] = 200;
+          texData[texIndex + 2] = 200;
+          texData[texIndex + 3] = 255;
+        }
+        texIndex += 4;
+      }
+    }
+
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
       //gl.UNSIGNED_BYTE, new Uint8Array([ 0, 0, 255, 255 ]));
       gl.UNSIGNED_BYTE, texData);
 
