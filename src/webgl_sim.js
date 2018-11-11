@@ -35,6 +35,19 @@ const fsSource = `
   }
 `;
 
+const golFragSource = `
+
+  precision mediump float;
+
+  varying vec2 vTexCoord;
+
+  uniform sampler2D uTexture;
+
+  void main() {
+    gl_FragColor = texture2D(uTexture, vTexCoord);
+  }
+`;
+
 // simple quad to cover entire canvas
 const QUAD = new Float32Array([
   1, 1,
@@ -62,6 +75,8 @@ export class WebGLSim {
 
     const shaderProgram = initShaderProgram(this.gl, vsSource, fsSource);
 
+    const golShaderProgram = initShaderProgram(gl, vsSource, golFragSource);
+
     this.defaultShaderInfo = {
       program: shaderProgram,
       attribLocations: {
@@ -72,6 +87,14 @@ export class WebGLSim {
         uResolution: this.gl.getUniformLocation(shaderProgram, 'uResolution'),
         uModelViewMatrix: this.gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
         uVal: this.gl.getUniformLocation(shaderProgram, 'uVal'),
+      },
+    };
+
+    this.golShaderInfo = {
+      program: golShaderProgram,
+      attribLocations: {
+        vertexPosition: gl.getAttribLocation(golShaderProgram, 'aVertexPosition'),
+        texCoordPosition: gl.getAttribLocation(golShaderProgram, 'aTexCoord'),
       },
     };
 
@@ -112,7 +135,9 @@ export class WebGLSim {
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
     const texWidth = 8; 
+    this._texWidth = texWidth;
     const texHeight = 8;
+    this._texHeight = texHeight;
 
     //const texData = new Uint8Array([
     //  255, 0, 0, 255,
@@ -144,7 +169,8 @@ export class WebGLSim {
     }
 
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
+    gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
       //gl.UNSIGNED_BYTE, new Uint8Array([ 0, 0, 255, 255 ]));
       gl.UNSIGNED_BYTE, texData);
 
@@ -152,6 +178,15 @@ export class WebGLSim {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    this._fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this._fb);
+    const attachmentPoint = gl.COLOR_ATTACHMENT0;
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, texture, 0);
+
+
+
 
     //gl.generateMipmap(gl.TEXTURE_2D);
 
@@ -175,11 +210,24 @@ export class WebGLSim {
     //this.gl.uniform
 
     const gl = this.gl;
-    const defaultShaderInfo = this.defaultShaderInfo;
+
     ////const lineData = this._lines;
     ////const numLines = this._lines.length / 4;
 
-    gl.useProgram(defaultShaderInfo.program);
+    gl.useProgram(this.golShaderInfo.program);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this._fb);
+    gl.viewport(0, 0, this._texWidth, this._texHeight);
+    gl.clearColor(1, 0, 0, 1);
+    //gl.clear(gl.COLOR_BUFFER_BIT);
+
+    //gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    gl.useProgram(this.defaultShaderInfo.program);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.uniform1f(this.defaultShaderInfo.uniformLocations.uVal, this._val);
 

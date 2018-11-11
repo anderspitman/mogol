@@ -19,7 +19,7 @@ export class GOL {
     this._lifeColor = lifeColor;
     this._seedColor = seedColor;
 
-    this._tickDelayMs = 32;
+    this._tickDelayMs = 1000;
 
     this._sim = new WebGLSim({
       domElementId: 'webgl-container',
