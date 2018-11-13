@@ -19,19 +19,20 @@ const fsSource = `
 
   varying vec2 vTexCoord;
 
-  uniform float uVal;
   uniform sampler2D uTexture;
 
   void main() {
-    //if (gl_FragCoord.x > uVal) {
-    //  gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
-    //}
-    //else {
-    //  gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);
-    //}
 
-    //gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);
-    gl_FragColor = texture2D(uTexture, vTexCoord);
+    //gl_FragColor = texture2D(uTexture, vTexCoord);
+
+    vec4 state = texture2D(uTexture, vTexCoord);
+    
+    if (state.x == 1.0) {
+      gl_FragColor = vec4(0, 1, 0, 1);
+    }
+    else {
+      gl_FragColor = vec4(0, 0, 1, 1);
+    }
   }
 `;
 
@@ -44,7 +45,32 @@ const golFragSource = `
   uniform sampler2D uTexture;
 
   void main() {
-    gl_FragColor = texture2D(uTexture, vTexCoord);
+
+    vec2 uResolution = vec2(128, 128);
+
+    vec2 fragCoord = vec2(gl_FragCoord.xy);
+    vec4 fragColor = texture2D(uTexture, fragCoord/uResolution.xy); 
+
+    vec4 u=vec4(0.0);
+    u+=texture2D(uTexture, (fragCoord+vec2(-1.0,-1.0))/uResolution.xy); 
+    u+=texture2D(uTexture, (fragCoord+vec2( 0.0,-1.0))/uResolution.xy); 
+	  u+=texture2D(uTexture, (fragCoord+vec2( 1.0,-1.0))/uResolution.xy); 
+  	u+=texture2D(uTexture, (fragCoord+vec2(-1.0, 0.0))/uResolution.xy); 
+  	u+=texture2D(uTexture, (fragCoord+vec2( 1.0, 0.0))/uResolution.xy); 
+		u+=texture2D(uTexture, (fragCoord+vec2(-1.0, 1.0))/uResolution.xy); 
+    u+=texture2D(uTexture, (fragCoord+vec2( 0.0, 1.0))/uResolution.xy); 
+    u+=texture2D(uTexture, (fragCoord+vec2( 1.0, 1.0))/uResolution.xy);
+    if(u.x==3.0)
+      fragColor.x=1.0;
+    else if(u.x<2.0)
+		  fragColor.x=0.0;
+    else if(u.x>3.0)
+      fragColor.x=0.0;
+
+    gl_FragColor = fragColor;
+
+    //gl_FragColor = texture2D(uTexture, gl_FragCoord.xy/8.0);
+
   }
 `;
 
@@ -56,6 +82,27 @@ const QUAD = new Float32Array([
   -1, -1,
 ]);
 
+
+class TextureData {
+  constructor(width, height) {
+
+    this._width = width;
+    this._heigh = height;
+    this._buf = new Uint8Array(width * height * 4);
+  }
+
+  setTexel(row, col, value) {
+    const i = (row * this._width + col) * 4;
+    this._buf[i] = value[0];
+    this._buf[i + 1] = value[1];
+    this._buf[i + 2] = value[2];
+    this._buf[i + 3] = value[3];
+  }
+
+  getBuffer() {
+    return this._buf;
+  }
+}
 
 export class WebGLSim {
   constructor({ domElementId }) {
@@ -86,7 +133,7 @@ export class WebGLSim {
       uniformLocations: {
         uResolution: this.gl.getUniformLocation(shaderProgram, 'uResolution'),
         uModelViewMatrix: this.gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
-        uVal: this.gl.getUniformLocation(shaderProgram, 'uVal'),
+        uTexture: this.gl.getUniformLocation(shaderProgram, 'uTexture'),
       },
     };
 
@@ -95,6 +142,9 @@ export class WebGLSim {
       attribLocations: {
         vertexPosition: gl.getAttribLocation(golShaderProgram, 'aVertexPosition'),
         texCoordPosition: gl.getAttribLocation(golShaderProgram, 'aTexCoord'),
+      },
+      uniformLocations: {
+        uTexture: this.gl.getUniformLocation(golShaderProgram, 'uTexture'),
       },
     };
 
@@ -130,76 +180,36 @@ export class WebGLSim {
         false, 0, 0);
     gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
 
-    // set up texture
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    const texWidth = 8; 
+    const texWidth = 128; 
     this._texWidth = texWidth;
-    const texHeight = 8;
+    const texHeight = 128;
     this._texHeight = texHeight;
 
-    //const texData = new Uint8Array([
-    //  255, 0, 0, 255,
-    //  0, 255, 0, 255,
-    //  0, 0, 255, 255,
-    //  255, 0, 255, 255,
-    //]);
+    const texData = new TextureData(texWidth, texHeight);
+    texData.setTexel(3, 3, [255, 0, 0, 255]);
+    texData.setTexel(4, 3, [255, 0, 0, 255]);
+    texData.setTexel(5, 3, [255, 0, 0, 255]);
+    texData.setTexel(5, 4, [255, 0, 0, 255]);
+    texData.setTexel(4, 5, [255, 0, 0, 255]);
 
-    const texData = new Uint8Array(texWidth * texHeight * 4);
+    // set up texture
+    const front = createRenderTarget(gl, texWidth, texHeight);
+    this._front = front;
+    const back = createRenderTarget(gl, texWidth, texHeight);
+    this._back = back;
 
-    let texIndex = 0;
-
-    for (let i = 0; i < texHeight; i++) {
-      for (let j = 0; j < texWidth; j++) {
-        if ((j % 2 === 0 && i % 2 !== 0) || (j % 2 !== 0 && i % 2 === 0)) {
-          texData[texIndex + 0] = 64;
-          texData[texIndex + 1] = 64;
-          texData[texIndex + 2] = 64;
-          texData[texIndex + 3] = 255;
-        }
-        else {
-          texData[texIndex + 0] = 200;
-          texData[texIndex + 1] = 200;
-          texData[texIndex + 2] = 200;
-          texData[texIndex + 3] = 255;
-        }
-        texIndex += 4;
-      }
-    }
-
-
+    //gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, back.texture);
     gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
-      //gl.UNSIGNED_BYTE, new Uint8Array([ 0, 0, 255, 255 ]));
-      gl.UNSIGNED_BYTE, texData);
+      gl.UNSIGNED_BYTE, texData.getBuffer());
 
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, front.texture);
+    //gl.texImage2D(
+    //  gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
+    //  gl.UNSIGNED_BYTE, texData.getBuffer());
 
-    this._fb = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this._fb);
-    const attachmentPoint = gl.COLOR_ATTACHMENT0;
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, texture, 0);
-
-
-
-
-    //gl.generateMipmap(gl.TEXTURE_2D);
-
-    //const image = new Image();
-    //image.src = '/dist/f-texture.png';
-    //image.addEventListener('load', function() {
-    //  gl.bindTexture(gl.TEXTURE_2D, texture);
-    //  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
-    //    image);
-    //  gl.generateMipmap(gl.TEXTURE_2D);
-    //});
-
-    this._val = 0;
   }
 
   step(grid, numRows, numCols) {
@@ -215,26 +225,35 @@ export class WebGLSim {
     ////const numLines = this._lines.length / 4;
 
     gl.useProgram(this.golShaderInfo.program);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this._fb);
+    //gl.viewport(0, 0, this._texWidth, this._texHeight);
     gl.viewport(0, 0, this._texWidth, this._texHeight);
-    gl.clearColor(1, 0, 0, 1);
+    //gl.clearColor(1, 0, 0, 1);
     //gl.clear(gl.COLOR_BUFFER_BIT);
 
-    //gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    //gl.uniform1i(this.golShaderInfo.uniformLocations.uTexture, 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this._back.texture);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this._front.framebuffer);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     gl.useProgram(this.defaultShaderInfo.program);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.clearColor(0, 0, 1, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    //gl.clearColor(0, 0, 1, 1);
+    //gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.uniform1f(this.defaultShaderInfo.uniformLocations.uVal, this._val);
+    //gl.uniform1i(this.defaultShaderInfo.uniformLocations.uTexture, 1);
 
-    const offset = 0;
-    const numElements = 4;
-    gl.drawArrays(gl.TRIANGLE_STRIP, offset, numElements);
-    this._val += 1;
+    //gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this._front.texture);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    const temp = this._front;
+    this._front = this._back;
+    this._back = temp;
 
     ////gl.uniformMatrix3fv(
     ////    this.defaultShaderInfo.uniformLocations.uModelViewMatrix,
@@ -309,4 +328,29 @@ function loadShader(gl, type, source) {
   }
 
   return shader;
+}
+
+function createRenderTarget(gl, width, height) {
+	var target = {};
+	target.framebuffer = gl.createFramebuffer();
+	target.renderbuffer = gl.createRenderbuffer();
+	target.texture = gl.createTexture();
+	// set up framebuffer
+	gl.bindTexture( gl.TEXTURE_2D, target.texture );
+	gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null );
+	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
+	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST );
+	gl.bindFramebuffer( gl.FRAMEBUFFER, target.framebuffer );
+	gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.texture, 0 );
+	// set up renderbuffer
+	gl.bindRenderbuffer( gl.RENDERBUFFER, target.renderbuffer );
+	gl.renderbufferStorage( gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height );
+	gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, target.renderbuffer );
+	// clean up
+	gl.bindTexture( gl.TEXTURE_2D, null );
+	gl.bindRenderbuffer( gl.RENDERBUFFER, null );
+	gl.bindFramebuffer( gl.FRAMEBUFFER, null);
+	return target;
 }
