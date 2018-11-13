@@ -43,10 +43,11 @@ const golFragSource = `
   varying vec2 vTexCoord;
 
   uniform sampler2D uTexture;
+  uniform vec2 uResolution;
 
   void main() {
 
-    vec2 uResolution = vec2(128, 128);
+    //vec2 uResolution = vec2(128, 128);
 
     vec2 fragCoord = vec2(gl_FragCoord.xy);
     vec4 fragColor = texture2D(uTexture, fragCoord/uResolution.xy); 
@@ -144,6 +145,7 @@ export class WebGLSim {
         texCoordPosition: gl.getAttribLocation(golShaderProgram, 'aTexCoord'),
       },
       uniformLocations: {
+        uResolution: this.gl.getUniformLocation(golShaderProgram, 'uResolution'),
         uTexture: this.gl.getUniformLocation(golShaderProgram, 'uTexture'),
       },
     };
@@ -180,17 +182,17 @@ export class WebGLSim {
         false, 0, 0);
     gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
 
-    const texWidth = 128; 
+    const texWidth = 256; 
     this._texWidth = texWidth;
-    const texHeight = 128;
+    const texHeight = 256;
     this._texHeight = texHeight;
 
     const texData = new TextureData(texWidth, texHeight);
-    texData.setTexel(3, 3, [255, 0, 0, 255]);
     texData.setTexel(4, 3, [255, 0, 0, 255]);
-    texData.setTexel(5, 3, [255, 0, 0, 255]);
-    texData.setTexel(5, 4, [255, 0, 0, 255]);
+    texData.setTexel(4, 4, [255, 0, 0, 255]);
     texData.setTexel(4, 5, [255, 0, 0, 255]);
+    texData.setTexel(3, 5, [255, 0, 0, 255]);
+    texData.setTexel(2, 4, [255, 0, 0, 255]);
 
     // set up texture
     const front = createRenderTarget(gl, texWidth, texHeight);
@@ -231,6 +233,7 @@ export class WebGLSim {
     //gl.clear(gl.COLOR_BUFFER_BIT);
 
     //gl.uniform1i(this.golShaderInfo.uniformLocations.uTexture, 0);
+    gl.uniform2f(this.golShaderInfo.uniformLocations.uResolution, this._texWidth, this._texHeight);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._back.texture);
@@ -283,7 +286,7 @@ export class WebGLSim {
     //  //gl.drawArrays(gl.LINES, offset, grid.length / numComponents);
     //}
 
-    //console.log("WebGL time: " + (timeNowSeconds() - startTime));
+    console.log("WebGL time: " + (timeNowSeconds() - startTime));
   }
 }
 
