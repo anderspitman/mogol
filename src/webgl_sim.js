@@ -23,8 +23,6 @@ const fsSource = `
 
   void main() {
 
-    //gl_FragColor = texture2D(uTexture, vTexCoord);
-
     vec4 state = texture2D(uTexture, vTexCoord);
     
     if (state.x == 1.0) {
@@ -47,8 +45,6 @@ const golFragSource = `
 
   void main() {
 
-    //vec2 uResolution = vec2(128, 128);
-
     vec2 fragCoord = vec2(gl_FragCoord.xy);
     vec4 fragColor = texture2D(uTexture, fragCoord/uResolution.xy); 
 
@@ -69,9 +65,6 @@ const golFragSource = `
       fragColor.x=0.0;
 
     gl_FragColor = fragColor;
-
-    //gl_FragColor = texture2D(uTexture, gl_FragCoord.xy/8.0);
-
   }
 `;
 
@@ -200,18 +193,10 @@ export class WebGLSim {
     const back = createRenderTarget(gl, texWidth, texHeight);
     this._back = back;
 
-    //gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, back.texture);
     gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
       gl.UNSIGNED_BYTE, texData.getBuffer());
-
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, front.texture);
-    //gl.texImage2D(
-    //  gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
-    //  gl.UNSIGNED_BYTE, texData.getBuffer());
-
   }
 
   step(grid, numRows, numCols) {
@@ -219,23 +204,15 @@ export class WebGLSim {
 
     const startTime = timeNowSeconds();
 
-    //this.gl.uniform
-
     const gl = this.gl;
 
-    ////const lineData = this._lines;
-    ////const numLines = this._lines.length / 4;
-
     gl.useProgram(this.golShaderInfo.program);
-    //gl.viewport(0, 0, this._texWidth, this._texHeight);
     gl.viewport(0, 0, this._texWidth, this._texHeight);
     //gl.clearColor(1, 0, 0, 1);
     //gl.clear(gl.COLOR_BUFFER_BIT);
 
-    //gl.uniform1i(this.golShaderInfo.uniformLocations.uTexture, 0);
     gl.uniform2f(this.golShaderInfo.uniformLocations.uResolution, this._texWidth, this._texHeight);
 
-    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._back.texture);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this._front.framebuffer);
 
@@ -246,9 +223,6 @@ export class WebGLSim {
     //gl.clearColor(0, 0, 1, 1);
     //gl.clear(gl.COLOR_BUFFER_BIT);
 
-    //gl.uniform1i(this.defaultShaderInfo.uniformLocations.uTexture, 1);
-
-    //gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._front.texture);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -257,34 +231,6 @@ export class WebGLSim {
     const temp = this._front;
     this._front = this._back;
     this._back = temp;
-
-    ////gl.uniformMatrix3fv(
-    ////    this.defaultShaderInfo.uniformLocations.uModelViewMatrix,
-    ////    false,
-    ////    this.modelViewMatrix.getArray());
-
-    //{
-    //  const numComponents = 2;
-    //  const type = gl.FLOAT;
-    //  const normalize = false;
-    //  const stride = 0;
-    //  const offset = 0;
-    //  gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
-
-    //  gl.bufferData(gl.ARRAY_BUFFER, grid, gl.DYNAMIC_DRAW);
-
-    //  //gl.vertexAttribPointer(
-    //  //    defaultShaderInfo.attribLocations.vertexPosition,
-    //  //    numComponents,
-    //  //    type,
-    //  //    normalize,
-    //  //    stride,
-    //  //    offset);
-    //  //gl.enableVertexAttribArray(
-    //  //    defaultShaderInfo.attribLocations.vertexPosition);
-
-    //  //gl.drawArrays(gl.LINES, offset, grid.length / numComponents);
-    //}
 
     console.log("WebGL time: " + (timeNowSeconds() - startTime));
   }
@@ -336,7 +282,6 @@ function loadShader(gl, type, source) {
 function createRenderTarget(gl, width, height) {
 	var target = {};
 	target.framebuffer = gl.createFramebuffer();
-	target.renderbuffer = gl.createRenderbuffer();
 	target.texture = gl.createTexture();
 	// set up framebuffer
 	gl.bindTexture( gl.TEXTURE_2D, target.texture );
@@ -347,13 +292,8 @@ function createRenderTarget(gl, width, height) {
 	gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST );
 	gl.bindFramebuffer( gl.FRAMEBUFFER, target.framebuffer );
 	gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.texture, 0 );
-	// set up renderbuffer
-	gl.bindRenderbuffer( gl.RENDERBUFFER, target.renderbuffer );
-	gl.renderbufferStorage( gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height );
-	gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, target.renderbuffer );
 	// clean up
 	gl.bindTexture( gl.TEXTURE_2D, null );
-	gl.bindRenderbuffer( gl.RENDERBUFFER, null );
 	gl.bindFramebuffer( gl.FRAMEBUFFER, null);
 	return target;
 }
