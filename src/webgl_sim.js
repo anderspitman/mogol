@@ -1,4 +1,5 @@
 const { timeNowSeconds } = require('./utils');
+import { Vector2 } from './math';
 
 const vsSource = `
   attribute vec2 aVertexPosition;
@@ -64,7 +65,28 @@ const golFragSource = `
     else if(u.x>3.0)
       fragColor.x=0.0;
 
+    fragColor.a = 0.0;
+
     gl_FragColor = fragColor;
+  }
+`;
+
+const placePatternFragSource = `
+
+  precision mediump float;
+
+  varying vec2 vTexCoord;
+
+  uniform sampler2D uTexture;
+  uniform vec2 uResolution;
+
+  void main() {
+
+    vec2 fragCoord = vec2(gl_FragCoord.xy);
+    vec4 fragColor = texture2D(uTexture, fragCoord/uResolution.xy); 
+
+    gl_FragColor = fragColor;
+    //gl_FragColor = vec4(1, 0, 0, 1);
   }
 `;
 
@@ -99,24 +121,47 @@ class TextureData {
 }
 
 export class WebGLSim {
-  constructor({ domElementId }) {
+  constructor({ domElementId, numRows, numCols }) {
+    this._numRows = numRows;
+    this._numCols = numCols;
+
     this.$el = document.getElementById(domElementId);
 
     const dim = this.$el.getBoundingClientRect();
+    this._dim = dim;
+    this._trans = new Vector2({ x: 0, y: 0 });
+    this._zoom = 1.0;
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = dim.width;
     this.canvas.height = dim.height;
     this.$el.appendChild(this.canvas);
+
+
+    const curPos = new Vector2({ x: 0, y: 0 });
+    this._curGridPos = new Vector2({ x: 0, y: 0 });
+    this.canvas.addEventListener('mousemove', (e) => {
+      curPos.x = this.getWorldX(e.clientX);
+      curPos.y = this.getWorldY(e.clientY);
+      this._curGridPos.x = this.getGridCoordinatesX(e.clientX);
+      this._curGridPos.y = this.getGridCoordinatesY(e.clientY);
+      //console.log(this._curGridPos);
+    });
+
+    this.canvas.addEventListener('click', (e) => {
+      this.placePattern();
+    });
+
+
     this.gl = this.canvas.getContext('webgl');
     const gl = this.gl;
 
     this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-    const shaderProgram = initShaderProgram(this.gl, vsSource, fsSource);
-
+    const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
     const golShaderProgram = initShaderProgram(gl, vsSource, golFragSource);
+    const placePatternShaderProgram = initShaderProgram(gl, vsSource, placePatternFragSource);
 
     this.defaultShaderInfo = {
       program: shaderProgram,
@@ -143,7 +188,17 @@ export class WebGLSim {
       },
     };
 
-    //this.gl.useProgram(this.defaultShaderInfo.program);
+    this.placePatternShaderInfo = {
+      program: placePatternShaderProgram,
+      attribLocations: {
+        vertexPosition: gl.getAttribLocation(placePatternShaderProgram, 'aVertexPosition'),
+        texCoordPosition: gl.getAttribLocation(placePatternShaderProgram, 'aTexCoord'),
+      },
+      uniformLocations: {
+        uResolution: this.gl.getUniformLocation(placePatternShaderProgram, 'uResolution'),
+        uTexture: this.gl.getUniformLocation(placePatternShaderProgram, 'uTexture'),
+      },
+    };
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -153,7 +208,6 @@ export class WebGLSim {
     gl.vertexAttribPointer(
         this.defaultShaderInfo.attribLocations.vertexPosition, 2, gl.FLOAT,
         false, 0, 0);
-
     gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
 
     //gl.drawArrays(gl.TRIANGLE_STRIP, offset, 4);
@@ -175,9 +229,9 @@ export class WebGLSim {
         false, 0, 0);
     gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
 
-    const texWidth = 256; 
+    const texWidth = this._numCols; 
     this._texWidth = texWidth;
-    const texHeight = 256;
+    const texHeight = this._numRows;
     this._texHeight = texHeight;
 
     const texData = new TextureData(texWidth, texHeight);
@@ -232,7 +286,121 @@ export class WebGLSim {
     this._front = this._back;
     this._back = temp;
 
-    console.log("WebGL time: " + (timeNowSeconds() - startTime));
+    //console.log("WebGL time: " + (timeNowSeconds() - startTime));
+  }
+
+  getOrientedCol(rowIndex, colIndex) {
+    let gridColIndex;
+    switch (this._orientation) {
+      case 'up':
+        gridColIndex = this._curGridPos.x + colIndex - this._patternHalfWidth;
+        break;
+      case 'left':
+        gridColIndex = this._curGridPos.x + rowIndex - this._patternHalfHeight;
+        break;
+      case 'down':
+        gridColIndex = this._curGridPos.x - colIndex + this._patternHalfWidth;
+        break;
+      case 'right':
+        gridColIndex = this._curGridPos.x - rowIndex + this._patternHalfHeight;
+        break;
+    }
+
+    return gridColIndex;
+  }
+
+  getOrientedRow(rowIndex, colIndex) {
+    let gridRowIndex;
+    switch (this._orientation) {
+      case 'up':
+        gridRowIndex = this._curGridPos.y + rowIndex - this._patternHalfHeight;
+        break;
+      case 'left':
+        gridRowIndex = this._curGridPos.y - colIndex + this._patternHalfWidth;
+        break;
+      case 'down':
+        gridRowIndex = this._curGridPos.y - rowIndex + this._patternHalfHeight;
+        break;
+      case 'right':
+        gridRowIndex = this._curGridPos.y + colIndex - this._patternHalfWidth;
+        break;
+    }
+
+    return gridRowIndex;
+  }
+
+  setPattern(pattern) {
+    this._pattern = pattern;
+    this._patternHalfWidth = Math.floor(this._pattern[0].length / 2);
+    this._patternHalfHeight = Math.floor(this._pattern.length / 2);
+  }
+
+  setOrientation(orientation) {
+    this._orientation = orientation;
+  }
+
+  placePattern() {
+    const gl = this.gl;
+
+    // read current texture
+    const size = this._numRows * this._numCols * 4;
+    const pixels = new Uint8Array(size);
+    //gl.bindFramebuffer(gl.FRAMEBUFFER, this._front.framebuffer);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this._back.framebuffer);
+    gl.readPixels(0, 0, this._numCols, this._numRows, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+    console.log(pixels);
+    for (let i = 0; i < this._numRows; i++) {
+      console.log("Row: " + i);
+      for (let j = 0; j < this._numCols; j++) {
+        const index = (i * this._numCols + j) * 4;
+        console.log(pixels.slice(index,  index + 4));
+      }
+    }
+
+    // place a glider at the current coordinates
+    const i = ((this._curGridPos.y * this._numCols) + this._curGridPos.x) * 4;
+    pixels[i] = 255;
+    pixels[i+4] = 255;
+    pixels[i+8] = 255;
+    pixels[i+(this._numCols * 4)] = 255;
+    pixels[i+(this._numCols * 2 * 4) + 4] = 255;
+
+    // upload the new texture data
+    gl.bindTexture(gl.TEXTURE_2D, this._back.texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this._numCols, this._numRows, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+    //for (let j = 0; j < this._pattern.length; j++) {
+    //  const row = this._pattern[j];
+    //  for (let i = 0; i < row.length; i++) {
+    //    const cell = row[i];
+    //    const rowIndex = this.getOrientedRow(j, i);
+    //    const colIndex = this.getOrientedCol(j, i);
+    //    //this.setCell(this._state, rowIndex, colIndex, cell);
+    //  }
+    //}
+  }
+
+  getWorldX(x) {
+    x -= this._dim.left;
+    return (x - this._trans.x) / this._zoom;
+  }
+
+  getWorldY(y) {
+    y -= this._dim.top;
+    return (y - this._trans.y) / this._zoom;
+  }
+
+  getGridCoordinatesX(cursorX) {
+    const worldX = this.getWorldX(cursorX);
+    const x = Math.floor((worldX / this._dim.width) * this._numCols);
+    return x;
+  }
+
+  getGridCoordinatesY(cursorY) {
+    const worldY = this.getWorldY(cursorY);
+    const y = Math.floor((worldY/ this._dim.height) * this._numRows);
+    return y;
   }
 }
 

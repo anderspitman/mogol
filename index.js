@@ -30,14 +30,15 @@ const el = document.getElementById('canvas-container');
 
 const gol = new GOL({
   domElement: el,
-  numRows: 2048,
-  numCols: 2048,
+  numRows: 64,
+  numCols: 64,
   lifeColor: { r: 0, g: 128, b: 255, a: 1 },
   seedColor: { r: 255, g: 0, b: 255, a: .5 },
 });
 
 let pattern = parsePattern(rle_text);
 gol.setPattern(pattern);
+gol._sim.setPattern(pattern);
 
 let direction = 'up';
 gol.setOrientation(direction);

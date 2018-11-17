@@ -19,10 +19,12 @@ export class GOL {
     this._lifeColor = lifeColor;
     this._seedColor = seedColor;
 
-    this._tickDelayMs = 100;
+    this._tickDelayMs = 50;
 
     this._sim = new WebGLSim({
       domElementId: 'webgl-container',
+      numRows,
+      numCols,
     });
 
     const genUniverse = () => {
@@ -207,8 +209,8 @@ export class GOL {
   start() {
     const go = () => {
       setInterval(() => {
-        //this.tick();
-        //requestAnimationFrame(this.render.bind(this));
+        this.tick();
+        requestAnimationFrame(this.render.bind(this));
         this.render();
         this._sim.step();
       }, this._tickDelayMs);
