@@ -30,8 +30,8 @@ const el = document.getElementById('canvas-container');
 
 const gol = new GOL({
   domElement: el,
-  numRows: 64,
-  numCols: 64,
+  numRows: 256,
+  numCols: 256,
   lifeColor: { r: 0, g: 128, b: 255, a: 1 },
   seedColor: { r: 255, g: 0, b: 255, a: .5 },
 });
@@ -42,6 +42,8 @@ gol._sim.setPattern(pattern);
 
 let direction = 'up';
 gol.setOrientation(direction);
+gol._sim.setOrientation(direction);
+
 
 window.addEventListener('keypress', (e) => {
 
@@ -61,6 +63,7 @@ window.addEventListener('keypress', (e) => {
   }
 
   gol.setOrientation(direction);
+  gol._sim.setOrientation(direction);
 });
 
 el.addEventListener('click', (e) => {
@@ -74,6 +77,7 @@ patternLoadBtn.addEventListener('click', (e) => {
   const rleText = urlTextInput.value;
   pattern = parsePattern(rleText);
   gol.setPattern(pattern);
+  gol._sim.setPattern(pattern);
 });
 
 gol.start();

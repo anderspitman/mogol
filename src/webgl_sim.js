@@ -235,11 +235,11 @@ export class WebGLSim {
     this._texHeight = texHeight;
 
     const texData = new TextureData(texWidth, texHeight);
-    texData.setTexel(4, 3, [255, 0, 0, 255]);
-    texData.setTexel(4, 4, [255, 0, 0, 255]);
-    texData.setTexel(4, 5, [255, 0, 0, 255]);
-    texData.setTexel(3, 5, [255, 0, 0, 255]);
-    texData.setTexel(2, 4, [255, 0, 0, 255]);
+    //texData.setTexel(4, 3, [255, 0, 0, 255]);
+    //texData.setTexel(4, 4, [255, 0, 0, 255]);
+    //texData.setTexel(4, 5, [255, 0, 0, 255]);
+    //texData.setTexel(3, 5, [255, 0, 0, 255]);
+    //texData.setTexel(2, 4, [255, 0, 0, 255]);
 
     // set up texture
     const front = createRenderTarget(gl, texWidth, texHeight);
@@ -345,40 +345,26 @@ export class WebGLSim {
     // read current texture
     const size = this._numRows * this._numCols * 4;
     const pixels = new Uint8Array(size);
-    //gl.bindFramebuffer(gl.FRAMEBUFFER, this._front.framebuffer);
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, this._back.framebuffer);
     gl.readPixels(0, 0, this._numCols, this._numRows, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-    console.log(pixels);
-    for (let i = 0; i < this._numRows; i++) {
-      console.log("Row: " + i);
-      for (let j = 0; j < this._numCols; j++) {
-        const index = (i * this._numCols + j) * 4;
-        console.log(pixels.slice(index,  index + 4));
+    for (let j = 0; j < this._pattern.length; j++) {
+      const row = this._pattern[j];
+      for (let i = 0; i < row.length; i++) {
+        const cell = row[i];
+        const rowIndex = this.getOrientedRow(j, i);
+        const colIndex = this.getOrientedCol(j, i);
+        //this.setCell(this._state, rowIndex, colIndex, cell);
+        if (cell === 1) {
+          this.setCell(pixels, rowIndex, colIndex, 255);
+        }
       }
     }
-
-    // place a glider at the current coordinates
-    const i = ((this._curGridPos.y * this._numCols) + this._curGridPos.x) * 4;
-    pixels[i] = 255;
-    pixels[i+4] = 255;
-    pixels[i+8] = 255;
-    pixels[i+(this._numCols * 4)] = 255;
-    pixels[i+(this._numCols * 2 * 4) + 4] = 255;
 
     // upload the new texture data
     gl.bindTexture(gl.TEXTURE_2D, this._back.texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this._numCols, this._numRows, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-    //for (let j = 0; j < this._pattern.length; j++) {
-    //  const row = this._pattern[j];
-    //  for (let i = 0; i < row.length; i++) {
-    //    const cell = row[i];
-    //    const rowIndex = this.getOrientedRow(j, i);
-    //    const colIndex = this.getOrientedCol(j, i);
-    //    //this.setCell(this._state, rowIndex, colIndex, cell);
-    //  }
-    //}
   }
 
   getWorldX(x) {
@@ -401,6 +387,12 @@ export class WebGLSim {
     const worldY = this.getWorldY(cursorY);
     const y = Math.floor((worldY/ this._dim.height) * this._numRows);
     return y;
+  }
+
+  setCell(obj, rowIndex, colIndex, value) {
+    const i = colIndex * 4;
+    const j = rowIndex * 4;
+    obj[(j*this._numCols) + i] = value;
   }
 }
 
