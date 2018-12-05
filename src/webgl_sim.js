@@ -41,7 +41,8 @@ const fsSource = `
 
     vec2 fragCoord = vec2(gl_FragCoord.xy);
 
-    vec2 patternCoord = fragCoord - uMouseCoord;
+    vec2 halfPattern = uPatternDimensions / 2.0;
+    vec2 patternCoord = fragCoord - uMouseCoord + halfPattern;
 
     if (patternCoord.x >= 0.0 && patternCoord.x <= uPatternDimensions.x &&
         patternCoord.y >= 0.0 && patternCoord.y <= uPatternDimensions.y) {
@@ -51,22 +52,7 @@ const fsSource = `
       if (abs(patternState.x - 1.0) < 0.0001) {
         gl_FragColor = vec4(1, 0, 0, 1);
       }
-      //gl_FragColor = vec4(patternState.y, patternState.x, 0, 1);
     }
-
-    //if (patternCoord.x < 20.0) {
-    //  vec4 patternState = texture2D(uPatternData, vec2(0.5, 0.5));
-    //  
-    //  if (patternState.x == 1.0) {
-    //    gl_FragColor = vec4(0, 0, 0, 1);
-    //  }
-    //}
-    
-    //if (abs(uMouseCoord.x - fragCoord.x) < 50.0 &&
-    //    abs(uMouseCoord.y - fragCoord.y) < 50.0) {
-    ////if (uMouseCoord.x > uResolution.x) {
-    //  gl_FragColor = vec4(0, 0, 0, 1);
-    //}
   }
 `;
 
