@@ -51,9 +51,6 @@ const fsSource = `
       if (abs(patternState.x - 1.0) < 0.0001) {
         gl_FragColor = vec4(1, 0, 0, 1);
       }
-      else {
-        gl_FragColor = vec4(1, 1, 1, 1);
-      }
       //gl_FragColor = vec4(patternState.y, patternState.x, 0, 1);
     }
 
@@ -137,6 +134,21 @@ const QUAD = new Float32Array([
 ]);
 
 
+class Matrix {
+  constructor(width, height, array) {
+    this.width = width;
+    this.height = height;
+
+    this.array = array ? array : new Uint8Array(width * height);
+  }
+
+  rotate90() {
+    const newArr = rotateMat90(this.array, this.width, this.height);
+    return new Matrix(this.height, this.width, newArr);
+  }
+}
+
+
 class TextureData {
   constructor(width, height) {
 
@@ -160,6 +172,7 @@ class TextureData {
 
 export class WebGLSim {
   constructor({ domElementId, numRows, numCols }) {
+
     this._numRows = numRows;
     this._numCols = numCols;
 
@@ -297,9 +310,9 @@ export class WebGLSim {
       gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
       gl.UNSIGNED_BYTE, texData.getBuffer());
 
-    const patternTexture = gl.createTexture();
+    this._patternTexture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, patternTexture);
+    gl.bindTexture(gl.TEXTURE_2D, this._patternTexture);
     const patternWidth = 8;
     const patternHeight = 8;
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, patternWidth, patternHeight,
@@ -334,7 +347,6 @@ export class WebGLSim {
   }
 
   step(grid, numRows, numCols) {
-
 
     const startTime = timeNowSeconds();
 
@@ -416,12 +428,63 @@ export class WebGLSim {
 
   setPattern(pattern) {
     this._pattern = pattern;
-    this._patternHalfWidth = Math.floor(this._pattern[0].length / 2);
-    this._patternHalfHeight = Math.floor(this._pattern.length / 2);
+
+    this._patternWidth = this._pattern[0].length;
+    this._patternHeight = this._pattern.length;
+    this._patternHalfWidth = Math.floor(this._patternWidth / 2);
+    this._patternHalfHeight = Math.floor(this._patternHeight / 2);
+
+    this._updatePatternTexture();
   }
 
   setOrientation(orientation) {
     this._orientation = orientation;
+    this._updatePatternTexture();
+  }
+
+  _updatePatternTexture() {
+
+    let patternTexData = new Uint8Array(this._patternWidth * this._patternHeight);
+
+    for (let j = 0; j < this._pattern.length; j++) {
+      const row = this._pattern[j];
+      for (let i = 0; i < row.length; i++) {
+        patternTexData[j*this._patternWidth + i] = row[i] === 1 ? 255 : 0;
+      }
+    }
+
+    let mat = new Matrix(this._patternWidth, this._patternHeight, patternTexData);
+
+    // TODO: this is a hack since I've only implemented 90 degree rotation.
+    // Probably change it to rotate the pattern when a key is pressed rather
+    // than maintaining the orientation state.
+    switch (this._orientation) {
+      case 'left':
+        mat = mat.rotate90();
+        break;
+      case 'down':
+        mat = mat.rotate90();
+        mat = mat.rotate90();
+        break;
+      case 'right':
+        mat = mat.rotate90();
+        mat = mat.rotate90();
+        mat = mat.rotate90();
+        break;
+    }
+
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this._patternTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, mat.width, mat.height, 0,
+      gl.LUMINANCE, gl.UNSIGNED_BYTE, mat.array);
+    gl.activeTexture(gl.TEXTURE0);
+
+    const xConv = this.canvas.width / this._numCols;
+    const yConv = this.canvas.height / this._numRows;
+
+    gl.uniform2f(this.defaultShaderInfo.uniformLocations.uPatternDimensions,
+      mat.width * xConv, mat.height * yConv);
   }
 
   placePattern() {
@@ -542,3 +605,22 @@ function createRenderTarget(gl, width, height) {
 	gl.bindFramebuffer( gl.FRAMEBUFFER, null);
 	return target;
 }
+
+function rotateMat90(mat, width, height) {
+  const rotated = new Uint8Array(width * height);
+
+  const rotWidth = height;
+  const rotHeight = width;
+
+  for (let y = 0; y < height; y++) {
+    const rotX = y;
+    for (let x = 0; x < width; x++) {
+      const rotY = rotHeight - x - 1;
+      rotated[rotY*rotWidth + rotX] = mat[y*width + x];
+    }
+  }
+
+  return rotated;
+}
+
+

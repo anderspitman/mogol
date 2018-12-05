@@ -18,7 +18,7 @@ function parsePattern(text) {
 
   const pattern = [];
   while (row) {
-    console.log(row);
+    //console.log(row);
     pattern.push(row);
     row = patternIter.next();
   }
