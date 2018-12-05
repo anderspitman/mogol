@@ -22,16 +22,54 @@ const fsSource = `
 
   uniform sampler2D uTexture;
 
+  uniform vec2 uResolution;
+  uniform vec2 uMouseCoord;
+
+  uniform sampler2D uPatternData;
+  uniform vec2 uPatternDimensions;
+
   void main() {
 
     vec4 state = texture2D(uTexture, vTexCoord);
-    
+
     if (state.x == 1.0) {
       gl_FragColor = vec4(0, 1, 0, 1);
     }
     else {
       gl_FragColor = vec4(0, 0, 1, 1);
     }
+
+    vec2 fragCoord = vec2(gl_FragCoord.xy);
+
+    vec2 patternCoord = fragCoord - uMouseCoord;
+
+    if (patternCoord.x >= 0.0 && patternCoord.x <= uPatternDimensions.x &&
+        patternCoord.y >= 0.0 && patternCoord.y <= uPatternDimensions.y) {
+
+      vec2 patternTexCoord = patternCoord / uPatternDimensions;
+      vec4 patternState = texture2D(uPatternData, vec2(patternTexCoord.x, 1.0-patternTexCoord.y));
+      if (abs(patternState.x - 1.0) < 0.0001) {
+        gl_FragColor = vec4(1, 0, 0, 1);
+      }
+      else {
+        gl_FragColor = vec4(1, 1, 1, 1);
+      }
+      //gl_FragColor = vec4(patternState.y, patternState.x, 0, 1);
+    }
+
+    //if (patternCoord.x < 20.0) {
+    //  vec4 patternState = texture2D(uPatternData, vec2(0.5, 0.5));
+    //  
+    //  if (patternState.x == 1.0) {
+    //    gl_FragColor = vec4(0, 0, 0, 1);
+    //  }
+    //}
+    
+    //if (abs(uMouseCoord.x - fragCoord.x) < 50.0 &&
+    //    abs(uMouseCoord.y - fragCoord.y) < 50.0) {
+    ////if (uMouseCoord.x > uResolution.x) {
+    //  gl_FragColor = vec4(0, 0, 0, 1);
+    //}
   }
 `;
 
@@ -138,11 +176,11 @@ export class WebGLSim {
     this.$el.appendChild(this.canvas);
 
 
-    const curPos = new Vector2({ x: 0, y: 0 });
+    this._curPos = new Vector2({ x: 0, y: 0 });
     this._curGridPos = new Vector2({ x: 0, y: 0 });
     this.canvas.addEventListener('mousemove', (e) => {
-      curPos.x = this.getWorldX(e.clientX);
-      curPos.y = this.getWorldY(e.clientY);
+      this._curPos.x = this.getWorldX(e.clientX);
+      this._curPos.y = this.getWorldY(e.clientY);
       this._curGridPos.x = this.getGridCoordinatesX(e.clientX);
       this._curGridPos.y = this.getGridCoordinatesY(e.clientY);
       //console.log(this._curGridPos);
@@ -159,6 +197,10 @@ export class WebGLSim {
     this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
+    // see https://webglfundamentals.org/webgl/lessons/webgl-data-textures.html
+    const alignment = 1;
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, alignment);
+
     const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
     const golShaderProgram = initShaderProgram(gl, vsSource, golFragSource);
     const placePatternShaderProgram = initShaderProgram(gl, vsSource, placePatternFragSource);
@@ -171,8 +213,11 @@ export class WebGLSim {
       },
       uniformLocations: {
         uResolution: this.gl.getUniformLocation(shaderProgram, 'uResolution'),
+        uMouseCoord: this.gl.getUniformLocation(shaderProgram, 'uMouseCoord'),
         uModelViewMatrix: this.gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
         uTexture: this.gl.getUniformLocation(shaderProgram, 'uTexture'),
+        uPatternData: this.gl.getUniformLocation(shaderProgram, 'uPatternData'),
+        uPatternDimensions: this.gl.getUniformLocation(shaderProgram, 'uPatternDimensions'),
       },
     };
 
@@ -251,6 +296,41 @@ export class WebGLSim {
     gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.RGBA, texWidth, texHeight, 0, gl.RGBA,
       gl.UNSIGNED_BYTE, texData.getBuffer());
+
+    const patternTexture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, patternTexture);
+    const patternWidth = 8;
+    const patternHeight = 8;
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, patternWidth, patternHeight,
+      0, gl.LUMINANCE, gl.UNSIGNED_BYTE,
+      new Uint8Array([
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,255,255,255,0,0,0,
+        0,0,0,0,255,0,0,0,
+        0,0,0,255,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+      ]));
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST );
+
+    gl.activeTexture(gl.TEXTURE0);
+
+    gl.useProgram(this.defaultShaderInfo.program);
+    gl.uniform2f(this.defaultShaderInfo.uniformLocations.uResolution,
+      this.canvas.width, this.canvas.height);
+    gl.uniform1i(this.defaultShaderInfo.uniformLocations.uPatternData, 1);
+
+    const xConv = this.canvas.width / this._numCols;
+    const yConv = this.canvas.height / this._numRows;
+
+    gl.uniform2f(this.defaultShaderInfo.uniformLocations.uPatternDimensions,
+      patternWidth * xConv, patternHeight * yConv);
   }
 
   step(grid, numRows, numCols) {
@@ -277,6 +357,11 @@ export class WebGLSim {
     //gl.clearColor(0, 0, 1, 1);
     //gl.clear(gl.COLOR_BUFFER_BIT);
 
+    //console.log(this._curGridPos);
+    gl.uniform2f(this.defaultShaderInfo.uniformLocations.uMouseCoord,
+      //this._curGridPos.x, this._numRows - this._curGridPos.y);
+      //this._curPos.x, this.canvas.height - this._curPos.y);
+      this._curPos.x, this.canvas.height - this._curPos.y);
     gl.bindTexture(gl.TEXTURE_2D, this._front.texture);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
