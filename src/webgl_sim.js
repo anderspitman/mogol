@@ -254,8 +254,6 @@ export class WebGLSim {
         false, 0, 0);
     gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
 
-    //gl.drawArrays(gl.TRIANGLE_STRIP, offset, 4);
-
     const texCoords = new Float32Array([
       1, 0,
       1, 1,
@@ -279,11 +277,6 @@ export class WebGLSim {
     this._texHeight = texHeight;
 
     const texData = new TextureData(texWidth, texHeight);
-    //texData.setTexel(4, 3, [255, 0, 0, 255]);
-    //texData.setTexel(4, 4, [255, 0, 0, 255]);
-    //texData.setTexel(4, 5, [255, 0, 0, 255]);
-    //texData.setTexel(3, 5, [255, 0, 0, 255]);
-    //texData.setTexel(2, 4, [255, 0, 0, 255]);
 
     // set up texture
     const front = createRenderTarget(gl, texWidth, texHeight);
@@ -297,39 +290,16 @@ export class WebGLSim {
       gl.UNSIGNED_BYTE, texData.getBuffer());
 
     this._patternTexture = gl.createTexture();
-    gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this._patternTexture);
-    const patternWidth = 8;
-    const patternHeight = 8;
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, patternWidth, patternHeight,
-      0, gl.LUMINANCE, gl.UNSIGNED_BYTE,
-      new Uint8Array([
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,255,255,255,0,0,0,
-        0,0,0,0,255,0,0,0,
-        0,0,0,255,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-      ]));
     gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
     gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
     gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
     gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST );
 
-    gl.activeTexture(gl.TEXTURE0);
-
     gl.useProgram(this.defaultShaderInfo.program);
     gl.uniform2f(this.defaultShaderInfo.uniformLocations.uResolution,
       this.canvas.width, this.canvas.height);
     gl.uniform1i(this.defaultShaderInfo.uniformLocations.uPatternData, 1);
-
-    const xConv = this.canvas.width / this._numCols;
-    const yConv = this.canvas.height / this._numRows;
-
-    gl.uniform2f(this.defaultShaderInfo.uniformLocations.uPatternDimensions,
-      patternWidth * xConv, patternHeight * yConv);
   }
 
   step(grid, numRows, numCols) {
@@ -485,12 +455,6 @@ export class WebGLSim {
     const worldY = this.getWorldY(cursorY);
     const y = Math.floor((worldY/ this._dim.height) * this._numRows);
     return y;
-  }
-
-  setCell(obj, rowIndex, colIndex, value) {
-    const i = colIndex * 4;
-    const j = rowIndex * 4;
-    obj[(j*this._numCols) + i] = value;
   }
 }
 
