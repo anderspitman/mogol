@@ -372,46 +372,6 @@ export class WebGLSim {
     //console.log("WebGL time: " + (timeNowSeconds() - startTime));
   }
 
-  getOrientedCol(rowIndex, colIndex) {
-    let gridColIndex;
-    switch (this._orientation) {
-      case 'up':
-        gridColIndex = this._curGridPos.x + colIndex - this._patternHalfWidth;
-        break;
-      case 'left':
-        gridColIndex = this._curGridPos.x + rowIndex - this._patternHalfHeight;
-        break;
-      case 'down':
-        gridColIndex = this._curGridPos.x - colIndex + this._patternHalfWidth;
-        break;
-      case 'right':
-        gridColIndex = this._curGridPos.x - rowIndex + this._patternHalfHeight;
-        break;
-    }
-
-    return gridColIndex;
-  }
-
-  getOrientedRow(rowIndex, colIndex) {
-    let gridRowIndex;
-    switch (this._orientation) {
-      case 'up':
-        gridRowIndex = this._curGridPos.y + rowIndex - this._patternHalfHeight;
-        break;
-      case 'left':
-        gridRowIndex = this._curGridPos.y - colIndex + this._patternHalfWidth;
-        break;
-      case 'down':
-        gridRowIndex = this._curGridPos.y - rowIndex + this._patternHalfHeight;
-        break;
-      case 'right':
-        gridRowIndex = this._curGridPos.y + colIndex - this._patternHalfWidth;
-        break;
-    }
-
-    return gridRowIndex;
-  }
-
   setPattern(pattern) {
     this._pattern = pattern;
 
@@ -471,6 +431,8 @@ export class WebGLSim {
 
     gl.uniform2f(this.defaultShaderInfo.uniformLocations.uPatternDimensions,
       mat.width * xConv, mat.height * yConv);
+
+    this._patternMatrix = mat;
   }
 
   placePattern() {
@@ -481,24 +443,26 @@ export class WebGLSim {
     const pixels = new Uint8Array(size);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this._back.framebuffer);
-    gl.readPixels(0, 0, this._numCols, this._numRows, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.readPixels(0, 0, this._numCols, this._numRows, gl.RGBA,
+      gl.UNSIGNED_BYTE, pixels);
 
-    for (let j = 0; j < this._pattern.length; j++) {
-      const row = this._pattern[j];
-      for (let i = 0; i < row.length; i++) {
-        const cell = row[i];
-        const rowIndex = this.getOrientedRow(j, i);
-        const colIndex = this.getOrientedCol(j, i);
-        //this.setCell(this._state, rowIndex, colIndex, cell);
-        if (cell === 1) {
-          this.setCell(pixels, rowIndex, colIndex, 255);
+    const mat = this._patternMatrix;
+
+    for (let j = 0; j < mat.height; j++) {
+      for (let i = 0; i < mat.width; i++) {
+
+        if (mat.array[j*mat.width + i] === 255) {
+          const x = this._curGridPos.x + i - Math.floor(mat.width/2);
+          const y = this._curGridPos.y + j - Math.floor(mat.height/2);
+          pixels[(y*this._numCols*4) + x*4] = 255;
         }
       }
     }
 
     // upload the new texture data
     gl.bindTexture(gl.TEXTURE_2D, this._back.texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this._numCols, this._numRows, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this._numCols, this._numRows, 0,
+      gl.RGBA, gl.UNSIGNED_BYTE, pixels);
   }
 
   getWorldX(x) {
