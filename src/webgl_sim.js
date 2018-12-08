@@ -63,22 +63,22 @@ const golFragSource = `
   varying vec2 vTexCoord;
 
   uniform sampler2D uTexture;
-  uniform vec2 uResolution;
+  uniform vec2 uGridDimensions;
 
   void main() {
 
     vec2 fragCoord = vec2(gl_FragCoord.xy);
-    vec4 fragColor = texture2D(uTexture, fragCoord/uResolution.xy); 
+    vec4 fragColor = texture2D(uTexture, fragCoord/uGridDimensions.xy); 
 
     vec4 u=vec4(0.0);
-    u+=texture2D(uTexture, (fragCoord+vec2(-1.0,-1.0))/uResolution.xy); 
-    u+=texture2D(uTexture, (fragCoord+vec2( 0.0,-1.0))/uResolution.xy); 
-	  u+=texture2D(uTexture, (fragCoord+vec2( 1.0,-1.0))/uResolution.xy); 
-  	u+=texture2D(uTexture, (fragCoord+vec2(-1.0, 0.0))/uResolution.xy); 
-  	u+=texture2D(uTexture, (fragCoord+vec2( 1.0, 0.0))/uResolution.xy); 
-		u+=texture2D(uTexture, (fragCoord+vec2(-1.0, 1.0))/uResolution.xy); 
-    u+=texture2D(uTexture, (fragCoord+vec2( 0.0, 1.0))/uResolution.xy); 
-    u+=texture2D(uTexture, (fragCoord+vec2( 1.0, 1.0))/uResolution.xy);
+    u+=texture2D(uTexture, (fragCoord+vec2(-1.0,-1.0))/uGridDimensions.xy); 
+    u+=texture2D(uTexture, (fragCoord+vec2( 0.0,-1.0))/uGridDimensions.xy); 
+	  u+=texture2D(uTexture, (fragCoord+vec2( 1.0,-1.0))/uGridDimensions.xy); 
+  	u+=texture2D(uTexture, (fragCoord+vec2(-1.0, 0.0))/uGridDimensions.xy); 
+  	u+=texture2D(uTexture, (fragCoord+vec2( 1.0, 0.0))/uGridDimensions.xy); 
+		u+=texture2D(uTexture, (fragCoord+vec2(-1.0, 1.0))/uGridDimensions.xy); 
+    u+=texture2D(uTexture, (fragCoord+vec2( 0.0, 1.0))/uGridDimensions.xy); 
+    u+=texture2D(uTexture, (fragCoord+vec2( 1.0, 1.0))/uGridDimensions.xy);
     if(u.x==3.0)
       fragColor.x=1.0;
     else if(u.x<2.0)
@@ -227,7 +227,7 @@ export class WebGLSim {
         texCoordPosition: gl.getAttribLocation(golShaderProgram, 'aTexCoord'),
       },
       uniformLocations: {
-        uResolution: this.gl.getUniformLocation(golShaderProgram, 'uResolution'),
+        uGridDimensions: this.gl.getUniformLocation(golShaderProgram, 'uGridDimensions'),
         uTexture: this.gl.getUniformLocation(golShaderProgram, 'uTexture'),
       },
     };
@@ -313,7 +313,7 @@ export class WebGLSim {
     //gl.clearColor(1, 0, 0, 1);
     //gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.uniform2f(this.golShaderInfo.uniformLocations.uResolution, this._texWidth, this._texHeight);
+    gl.uniform2f(this.golShaderInfo.uniformLocations.uGridDimensions, this._texWidth, this._texHeight);
 
     gl.bindTexture(gl.TEXTURE_2D, this._back.texture);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this._front.framebuffer);
