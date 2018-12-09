@@ -92,24 +92,6 @@ const golFragSource = `
   }
 `;
 
-const placePatternFragSource = `
-
-  precision mediump float;
-
-  varying vec2 vTexCoord;
-
-  uniform sampler2D uTexture;
-  uniform vec2 uResolution;
-
-  void main() {
-
-    vec2 fragCoord = vec2(gl_FragCoord.xy);
-    vec4 fragColor = texture2D(uTexture, fragCoord/uResolution.xy); 
-
-    gl_FragColor = fragColor;
-    //gl_FragColor = vec4(1, 0, 0, 1);
-  }
-`;
 
 // simple quad to cover entire canvas
 const QUAD = new Float32Array([
@@ -202,7 +184,6 @@ export class WebGLSim {
 
     const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
     const golShaderProgram = initShaderProgram(gl, vsSource, golFragSource);
-    const placePatternShaderProgram = initShaderProgram(gl, vsSource, placePatternFragSource);
 
     this.defaultShaderInfo = {
       program: shaderProgram,
@@ -229,18 +210,6 @@ export class WebGLSim {
       uniformLocations: {
         uGridDimensions: this.gl.getUniformLocation(golShaderProgram, 'uGridDimensions'),
         uTexture: this.gl.getUniformLocation(golShaderProgram, 'uTexture'),
-      },
-    };
-
-    this.placePatternShaderInfo = {
-      program: placePatternShaderProgram,
-      attribLocations: {
-        vertexPosition: gl.getAttribLocation(placePatternShaderProgram, 'aVertexPosition'),
-        texCoordPosition: gl.getAttribLocation(placePatternShaderProgram, 'aTexCoord'),
-      },
-      uniformLocations: {
-        uResolution: this.gl.getUniformLocation(placePatternShaderProgram, 'uResolution'),
-        uTexture: this.gl.getUniformLocation(placePatternShaderProgram, 'uTexture'),
       },
     };
 
